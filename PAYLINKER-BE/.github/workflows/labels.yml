@@ -1,0 +1,76 @@
+# ══════════════════════════════════════════════════════
+#  PREFIX 라벨 — 작업 유형
+# ══════════════════════════════════════════════════════
+- name: "feat"
+  color: "7057FF"
+  description: "새로운 기능 구현"
+
+- name: "fix"
+  color: "D73A4A"
+  description: "버그 수정"
+
+- name: "docs"
+  color: "0075CA"
+  description: "문서 작성 및 수정"
+
+- name: "refactor"
+  color: "F9D0C4"
+  description: "코드 리팩토링 (기능 변경 없음)"
+
+- name: "test"
+  color: "BFD4F2"
+  description: "테스트 코드 추가 및 수정"
+
+- name: "chore"
+  color: "E4E669"
+  description: "빌드 설정, 의존성, 기타 잡무"
+
+- name: "style"
+  color: "FEF2C0"
+  description: "코드 포맷, 세미콜론 등 스타일 변경"
+
+- name: "perf"
+  color: "0052CC"
+  description: "성능 개선"
+
+- name: "ci"
+  color: "B60205"
+  description: "CI/CD 설정 변경"
+
+# ══════════════════════════════════════════════════════
+#  STATUS 라벨 — 작업 진행 상태
+# ══════════════════════════════════════════════════════
+- name: "status: todo"
+  color: "EDEDED"
+  description: "아직 시작하지 않은 작업"
+
+- name: "status: in progress"
+  color: "FBCA04"
+  description: "현재 진행 중인 작업"
+
+- name: "status: in review"
+  color: "0E8A16"
+  description: "코드 리뷰 진행 중"
+
+- name: "status: blocked"
+  color: "B60205"
+  description: "다른 작업에 의해 블로킹된 상태"
+
+- name: "status: done"
+  color: "006B75"
+  description: "작업 완료"
+
+# ══════════════════════════════════════════════════════
+#  PRIORITY 라벨 — 우선순위
+# ══════════════════════════════════════════════════════
+- name: "priority: high"
+  color: "B60205"
+  description: "긴급하게 처리해야 하는 작업"
+
+- name: "priority: medium"
+  color: "FBCA04"
+  description: "일반적인 우선순위"
+
+- name: "priority: low"
+  color: "0E8A16"
+  description: "여유 있을 때 처리해도 되는 작업"
