@@ -1,4 +1,4 @@
-package com.example.PAYLINKER_BE;
+package com.paylinker.api;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

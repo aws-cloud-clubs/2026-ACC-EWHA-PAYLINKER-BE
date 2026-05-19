@@ -1,4 +1,4 @@
-package com.example.PAYLINKER_BE;
+package com.paylinker.api;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
