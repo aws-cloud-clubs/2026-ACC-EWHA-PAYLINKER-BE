@@ -28,11 +28,11 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      # 3. 스프링 부트 프로젝트 빌드 (.jar 파일 생성)
+      # 3. api 모듈 스프링 부트 빌드 (.jar 파일 생성)
       - name: Build with Gradle
         run: |
           chmod +x ./gradlew
-          ./gradlew bootJar -x test
+          ./gradlew :api:bootJar -x test
 
       # 4. AWS OIDC 로그인 자격 증명 설정
       - name: Configure AWS credentials
@@ -53,8 +53,9 @@ jobs:
           ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # Dockerfile을 읽어 build/libs/*.jar 기반으로 이미지 빌드
+          # docker/Dockerfile.api 를 사용해 api/build/libs/*.jar 기반으로 이미지 빌드
           docker build \
+            -f docker/Dockerfile.api \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           
