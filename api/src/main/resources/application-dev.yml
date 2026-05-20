@@ -1,0 +1,23 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://cognito-idp.ap-northeast-2.amazonaws.com/ap-northeast-2_u4OjpByDf
+          jwk-set-uri: https://cognito-idp.ap-northeast-2.amazonaws.com/ap-northeast-2_u4OjpByDf/.well-known/jwks.json
+
+aws:
+  region: ap-northeast-2
+  cognito:
+    user-pool-id: ap-northeast-2_u4OjpByDf
+    app-client-id: 2n5v3qo0655tmsj1kthg8iq716
+  sqs:
+    email-queue-url: https://sqs.ap-northeast-2.amazonaws.com/218254304370/dev-paylinker-email-send-queue
+    email-dlq-url: https://sqs.ap-northeast-2.amazonaws.com/218254304370/dev-paylinker-email-send-dlq
+  ses:
+    from-email: ingpeula@gmail.com
+  dynamodb:
+    table-prefix: dev-paylinker
+  s3:
+    document-bucket: dev-paylinker-documents
+    upload-bucket: dev-paylinker-uploads
