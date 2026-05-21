@@ -13,6 +13,8 @@ import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
+import software.amazon.awssdk.services.dynamodb.model.Update;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 @Repository
@@ -50,29 +52,38 @@ public class ResendRequestRepository {
     }
 
     // status는 DynamoDB 예약어이므로 expressionAttributeNames 사용
-    public void updateToCompleted(String requestId, String processedBy, String processedAt) {
-        dynamoDbClient.updateItem(UpdateItemRequest.builder()
-                .tableName(tableName())
-                .key(Map.of("request_id", AttributeValue.fromS(requestId)))
-                .updateExpression("SET #s = :status, processed_by = :processedBy, processed_at = :processedAt")
-                .expressionAttributeNames(Map.of("#s", "status"))
-                .expressionAttributeValues(Map.of(
-                        ":status", AttributeValue.fromS("COMPLETED"),
-                        ":processedBy", AttributeValue.fromS(processedBy),
-                        ":processedAt", AttributeValue.fromS(processedAt)))
-                .build());
+    // ConditionExpression으로 레이스 컨디션 방지: REQUESTED 상태일 때만 갱신
+    public TransactWriteItem updateToCompletedTxItem(String requestId, String processedBy, String processedAt) {
+        return TransactWriteItem.builder()
+                .update(Update.builder()
+                        .tableName(tableName())
+                        .key(Map.of("request_id", AttributeValue.fromS(requestId)))
+                        .updateExpression("SET #s = :status, processed_by = :processedBy, processed_at = :processedAt")
+                        .conditionExpression("#s = :requested")
+                        .expressionAttributeNames(Map.of("#s", "status"))
+                        .expressionAttributeValues(Map.of(
+                                ":status", AttributeValue.fromS("COMPLETED"),
+                                ":processedBy", AttributeValue.fromS(processedBy),
+                                ":processedAt", AttributeValue.fromS(processedAt),
+                                ":requested", AttributeValue.fromS("REQUESTED")))
+                        .build())
+                .build();
     }
 
-    public void updateToRejected(String requestId, String processedBy, String processedAt) {
-        dynamoDbClient.updateItem(UpdateItemRequest.builder()
-                .tableName(tableName())
-                .key(Map.of("request_id", AttributeValue.fromS(requestId)))
-                .updateExpression("SET #s = :status, processed_by = :processedBy, processed_at = :processedAt")
-                .expressionAttributeNames(Map.of("#s", "status"))
-                .expressionAttributeValues(Map.of(
-                        ":status", AttributeValue.fromS("REJECTED"),
-                        ":processedBy", AttributeValue.fromS(processedBy),
-                        ":processedAt", AttributeValue.fromS(processedAt)))
-                .build());
+    public TransactWriteItem updateToRejectedTxItem(String requestId, String processedBy, String processedAt) {
+        return TransactWriteItem.builder()
+                .update(Update.builder()
+                        .tableName(tableName())
+                        .key(Map.of("request_id", AttributeValue.fromS(requestId)))
+                        .updateExpression("SET #s = :status, processed_by = :processedBy, processed_at = :processedAt")
+                        .conditionExpression("#s = :requested")
+                        .expressionAttributeNames(Map.of("#s", "status"))
+                        .expressionAttributeValues(Map.of(
+                                ":status", AttributeValue.fromS("REJECTED"),
+                                ":processedBy", AttributeValue.fromS(processedBy),
+                                ":processedAt", AttributeValue.fromS(processedAt),
+                                ":requested", AttributeValue.fromS("REQUESTED")))
+                        .build())
+                .build();
     }
 }
