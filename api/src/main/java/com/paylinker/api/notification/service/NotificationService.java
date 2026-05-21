@@ -20,16 +20,22 @@ import java.security.NoSuchAlgorithmException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest;
+import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
@@ -45,6 +51,7 @@ public class NotificationService {
     private final ResendRequestRepository resendRequestRepository;
     private final SecureLinkRepository secureLinkRepository;
     private final SendJobRepository sendJobRepository;
+    private final DynamoDbClient dynamoDbClient;
     private final SqsClient sqsClient;
     private final ObjectMapper objectMapper;
 
@@ -143,28 +150,42 @@ public class NotificationService {
         String campaignRecipientId = str(resendRequest, "campaign_recipient_id");
         String campaignId = str(resendRequest, "campaign_id");
 
-        // 1. 기존 활성 보안 링크 무효화
-        secureLinkRepository.findActiveByRecipientId(campaignRecipientId)
-                .ifPresent(link -> secureLinkRepository.invalidate(str(link, "secure_link_id")));
+        // 1. 읽기: 기존 활성 링크 및 연결된 check-item 조회 (트랜잭션 외부에서)
+        Optional<Map<String, AttributeValue>> existingLink =
+                secureLinkRepository.findActiveByRecipientId(campaignRecipientId);
+        Optional<Map<String, AttributeValue>> checkItem =
+                checkItemRepository.findByRelatedRequestId(requestId);
 
-        // 2. 새 보안 링크 생성
-        String newLinkExpiresAt = ZonedDateTime.now(KST).plusDays(2).format(ISO_OFFSET);
+        // 2. 새 보안 링크 값 준비: plainToken은 워커가 URL 생성에 사용, DB에는 해시만 저장
+        String plainToken = UUID.randomUUID().toString().replace("-", "");
+        String tokenHash = sha256(plainToken);
         String secureLinkId = "sl_" + UUID.randomUUID().toString().replace("-", "");
-        String tokenHash = sha256(UUID.randomUUID().toString().replace("-", ""));
-        secureLinkRepository.save(secureLinkId, campaignRecipientId, campaignId, tokenHash, newLinkExpiresAt);
-
-        // 3. 발송 작업 생성 + SQS 큐잉
+        String newLinkExpiresAt = ZonedDateTime.now(KST).plusDays(2).format(ISO_OFFSET);
         String sendJobId = "sj_" + UUID.randomUUID().toString().replace("-", "");
         String now = ZonedDateTime.now(KST).format(ISO_OFFSET);
-        sendJobRepository.save(sendJobId, campaignRecipientId, campaignId, "RESEND", secureLinkId, now);
-        enqueueSendJob(sendJobId);
 
-        // 4. 재전송 요청 상태 갱신
-        resendRequestRepository.updateToCompleted(requestId, processedBy, processedAt);
+        // 3. TransactWriteItems 구성: 모든 쓰기를 원자적으로 처리
+        List<TransactWriteItem> txItems = new ArrayList<>();
+        existingLink.ifPresent(link ->
+                txItems.add(secureLinkRepository.invalidateTxItem(str(link, "secure_link_id"))));
+        txItems.add(secureLinkRepository.saveTxItem(secureLinkId, campaignRecipientId, campaignId, tokenHash, newLinkExpiresAt));
+        txItems.add(sendJobRepository.saveTxItem(sendJobId, campaignRecipientId, campaignId, "RESEND", secureLinkId, now));
+        // ConditionExpression으로 레이스 컨디션 방지: REQUESTED 상태가 아니면 TransactionCanceledException 발생
+        txItems.add(resendRequestRepository.updateToCompletedTxItem(requestId, processedBy, processedAt));
+        checkItem.ifPresent(item ->
+                txItems.add(checkItemRepository.updateCheckStatusTxItem(str(item, "check_item_id"), "RESOLVED")));
 
-        // 5. 연결된 check-item 상태 갱신
-        checkItemRepository.findByRelatedRequestId(requestId)
-                .ifPresent(item -> checkItemRepository.updateCheckStatus(str(item, "check_item_id"), "RESOLVED"));
+        try {
+            dynamoDbClient.transactWriteItems(TransactWriteItemsRequest.builder()
+                    .transactItems(txItems)
+                    .build());
+        } catch (TransactionCanceledException e) {
+            throw new CustomException(ErrorCode.RESEND_REQUEST_ALREADY_PROCESSED);
+        }
+
+        // 4. SQS 큐잉은 모든 DB 작업 완료 후 마지막에 수행
+        //    plainToken을 포함해 워커가 보안 링크 URL을 생성할 수 있도록 전달
+        enqueueSendJob(sendJobId, plainToken);
 
         return ResendRequestActionResponse.builder()
                 .requestId(requestId)
@@ -176,10 +197,21 @@ public class NotificationService {
     }
 
     private ResendRequestActionResponse reject(String requestId, String processedBy, String processedAt) {
-        resendRequestRepository.updateToRejected(requestId, processedBy, processedAt);
+        Optional<Map<String, AttributeValue>> checkItem =
+                checkItemRepository.findByRelatedRequestId(requestId);
 
-        checkItemRepository.findByRelatedRequestId(requestId)
-                .ifPresent(item -> checkItemRepository.updateCheckStatus(str(item, "check_item_id"), "REJECTED"));
+        List<TransactWriteItem> txItems = new ArrayList<>();
+        txItems.add(resendRequestRepository.updateToRejectedTxItem(requestId, processedBy, processedAt));
+        checkItem.ifPresent(item ->
+                txItems.add(checkItemRepository.updateCheckStatusTxItem(str(item, "check_item_id"), "REJECTED")));
+
+        try {
+            dynamoDbClient.transactWriteItems(TransactWriteItemsRequest.builder()
+                    .transactItems(txItems)
+                    .build());
+        } catch (TransactionCanceledException e) {
+            throw new CustomException(ErrorCode.RESEND_REQUEST_ALREADY_PROCESSED);
+        }
 
         return ResendRequestActionResponse.builder()
                 .requestId(requestId)
@@ -188,9 +220,12 @@ public class NotificationService {
                 .build();
     }
 
-    private void enqueueSendJob(String sendJobId) {
+    private void enqueueSendJob(String sendJobId, String plainToken) {
         try {
-            String body = objectMapper.writeValueAsString(Map.of("sendJobId", sendJobId));
+            String body = objectMapper.writeValueAsString(Map.of(
+                    "sendJobId", sendJobId,
+                    "plainToken", plainToken
+            ));
             sqsClient.sendMessage(SendMessageRequest.builder()
                     .queueUrl(sqsQueueUrl)
                     .messageBody(body)
