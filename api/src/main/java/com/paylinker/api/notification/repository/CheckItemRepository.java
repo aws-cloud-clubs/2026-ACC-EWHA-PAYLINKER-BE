@@ -11,6 +11,8 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
+import software.amazon.awssdk.services.dynamodb.model.Update;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 @Repository
@@ -57,5 +59,16 @@ public class CheckItemRepository {
                 .updateExpression("SET check_status = :checkStatus")
                 .expressionAttributeValues(Map.of(":checkStatus", AttributeValue.fromS(checkStatus)))
                 .build());
+    }
+
+    public TransactWriteItem updateCheckStatusTxItem(String checkItemId, String checkStatus) {
+        return TransactWriteItem.builder()
+                .update(Update.builder()
+                        .tableName(tableName())
+                        .key(Map.of("check_item_id", AttributeValue.fromS(checkItemId)))
+                        .updateExpression("SET check_status = :checkStatus")
+                        .expressionAttributeValues(Map.of(":checkStatus", AttributeValue.fromS(checkStatus)))
+                        .build())
+                .build();
     }
 }

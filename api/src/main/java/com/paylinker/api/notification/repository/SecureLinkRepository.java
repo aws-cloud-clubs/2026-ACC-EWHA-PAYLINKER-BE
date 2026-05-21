@@ -7,9 +7,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.Put;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
+import software.amazon.awssdk.services.dynamodb.model.Update;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 @Repository
@@ -47,6 +50,17 @@ public class SecureLinkRepository {
                 .build());
     }
 
+    public TransactWriteItem invalidateTxItem(String secureLinkId) {
+        return TransactWriteItem.builder()
+                .update(Update.builder()
+                        .tableName(tableName())
+                        .key(Map.of("secure_link_id", AttributeValue.fromS(secureLinkId)))
+                        .updateExpression("SET link_status = :invalidated")
+                        .expressionAttributeValues(Map.of(":invalidated", AttributeValue.fromS("INVALIDATED")))
+                        .build())
+                .build();
+    }
+
     public void save(String secureLinkId, String campaignRecipientId, String campaignId,
                      String tokenHash, String expiresAt) {
         dynamoDbClient.putItem(PutItemRequest.builder()
@@ -59,5 +73,21 @@ public class SecureLinkRepository {
                         "link_status", AttributeValue.fromS("ACTIVE"),
                         "expires_at", AttributeValue.fromS(expiresAt)))
                 .build());
+    }
+
+    public TransactWriteItem saveTxItem(String secureLinkId, String campaignRecipientId, String campaignId,
+                                        String tokenHash, String expiresAt) {
+        return TransactWriteItem.builder()
+                .put(Put.builder()
+                        .tableName(tableName())
+                        .item(Map.of(
+                                "secure_link_id", AttributeValue.fromS(secureLinkId),
+                                "campaign_recipient_id", AttributeValue.fromS(campaignRecipientId),
+                                "campaign_id", AttributeValue.fromS(campaignId),
+                                "token_hash", AttributeValue.fromS(tokenHash),
+                                "link_status", AttributeValue.fromS("ACTIVE"),
+                                "expires_at", AttributeValue.fromS(expiresAt)))
+                        .build())
+                .build();
     }
 }
