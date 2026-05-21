@@ -10,10 +10,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Validated
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
@@ -42,9 +46,9 @@ public class NotificationController {
             @Parameter(description = "캠페인 ID")
             @RequestParam(required = false) String campaignId,
             @Parameter(description = "페이지 번호 (1부터 시작)")
-            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "1") @Min(1) int page,
             @Parameter(description = "페이지 크기 (1~50)")
-            @RequestParam(defaultValue = "20") int pageSize) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize) {
 
         CheckItemListResponse data = notificationService.getCheckItems(
                 itemType, status, campaignId, page, pageSize);
@@ -61,9 +65,9 @@ public class NotificationController {
             @Parameter(description = "캠페인 ID")
             @RequestParam(required = false) String campaignId,
             @Parameter(description = "페이지 번호 (1부터 시작)")
-            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "1") @Min(1) int page,
             @Parameter(description = "페이지 크기 (1~50)")
-            @RequestParam(defaultValue = "20") int pageSize) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize) {
 
         ResendRequestListResponse data = notificationService.getResendRequests(
                 status, campaignId, page, pageSize);
