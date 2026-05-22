@@ -1,5 +1,9 @@
 package com.paylinker.api.entity;
 
+import com.paylinker.api.entity.enums.DocumentMatchStatus;
+import com.paylinker.api.entity.enums.RecipientValidationStatus;
+import com.paylinker.api.entity.enums.SendFailureReason;
+import com.paylinker.api.entity.enums.SendJobStatus;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
@@ -24,13 +28,13 @@ public class PaylinkerCampaignRecipient {
     private String recipientId;
     private String email;
     private String employeeNo;
-    private String validationStatus;
-    private String documentMatchStatus;
-    private String sendStatus;
+    private RecipientValidationStatus validationStatus;
+    private DocumentMatchStatus documentMatchStatus;
+    private SendJobStatus sendStatus;
     private String isViewed;
     private String firstViewedAt;
     private Integer retryCount;
-    private String failureReason;
+    private SendFailureReason failureReason;
     private Integer reminderCount;
     private String lastReminderSentAt;
     private Integer resendRequestCount;
