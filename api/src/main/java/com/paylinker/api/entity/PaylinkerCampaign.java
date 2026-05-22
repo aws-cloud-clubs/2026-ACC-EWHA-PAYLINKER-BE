@@ -1,13 +1,17 @@
 package com.paylinker.api.entity;
 
+import com.paylinker.api.entity.enums.CampaignStatus;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondaryPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondarySortKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
 
 @DynamoDbBean
 public class PaylinkerCampaign {
 
+    public static final String INDEX_GSI1 = "GSI1";
     public static final String SK_METADATA = "METADATA";
 
     private String pk;
@@ -15,16 +19,36 @@ public class PaylinkerCampaign {
     private String campaignId;
     private String adminId;
     private String campaignName;
-    private String status;
+    private String emailSubject;
+    private String emailDescription;
+    private CampaignStatus status;
+    private Integer linkTtlHours;
+    private Boolean allowOneTimeLink;
+    private Boolean allowResendRequest;
+    private Integer resendRequestLimit;
+    private String scheduledSendAt;
+    private String sendStartedAt;
     private String sendCompletedAt;
-    private Integer totalRecipientCount;
+    private String cancelledAt;
     private Integer sendSuccessCount;
     private Integer sendFailedCount;
     private Integer viewedCount;
     private Integer unviewedCount;
+    private Integer totalRecipientCount;
+    private String createdAt;
+    private String gsi1Pk;
+    private String gsi1Sk;
 
     public static String pk(String campaignId) {
         return "CAMPAIGN#" + campaignId;
+    }
+
+    public static String sk() {
+        return SK_METADATA;
+    }
+
+    public static String gsi1Pk(String adminId) {
+        return "ADMIN#" + adminId;
     }
 
     @DynamoDbPartitionKey
@@ -72,13 +96,85 @@ public class PaylinkerCampaign {
         this.campaignName = campaignName;
     }
 
+    @DynamoDbAttribute("email_subject")
+    public String getEmailSubject() {
+        return emailSubject;
+    }
+
+    public void setEmailSubject(String emailSubject) {
+        this.emailSubject = emailSubject;
+    }
+
+    @DynamoDbAttribute("email_description")
+    public String getEmailDescription() {
+        return emailDescription;
+    }
+
+    public void setEmailDescription(String emailDescription) {
+        this.emailDescription = emailDescription;
+    }
+
     @DynamoDbAttribute("status")
-    public String getStatus() {
+    public CampaignStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(CampaignStatus status) {
         this.status = status;
+    }
+
+    @DynamoDbAttribute("link_ttl_hours")
+    public Integer getLinkTtlHours() {
+        return linkTtlHours;
+    }
+
+    public void setLinkTtlHours(Integer linkTtlHours) {
+        this.linkTtlHours = linkTtlHours;
+    }
+
+    @DynamoDbAttribute("allow_one_time_link")
+    public Boolean getAllowOneTimeLink() {
+        return allowOneTimeLink;
+    }
+
+    public void setAllowOneTimeLink(Boolean allowOneTimeLink) {
+        this.allowOneTimeLink = allowOneTimeLink;
+    }
+
+    @DynamoDbAttribute("allow_resend_request")
+    public Boolean getAllowResendRequest() {
+        return allowResendRequest;
+    }
+
+    public void setAllowResendRequest(Boolean allowResendRequest) {
+        this.allowResendRequest = allowResendRequest;
+    }
+
+    @DynamoDbAttribute("resend_request_limit")
+    public Integer getResendRequestLimit() {
+        return resendRequestLimit;
+    }
+
+    public void setResendRequestLimit(Integer resendRequestLimit) {
+        this.resendRequestLimit = resendRequestLimit;
+    }
+
+    @DynamoDbAttribute("scheduled_send_at")
+    public String getScheduledSendAt() {
+        return scheduledSendAt;
+    }
+
+    public void setScheduledSendAt(String scheduledSendAt) {
+        this.scheduledSendAt = scheduledSendAt;
+    }
+
+    @DynamoDbAttribute("send_started_at")
+    public String getSendStartedAt() {
+        return sendStartedAt;
+    }
+
+    public void setSendStartedAt(String sendStartedAt) {
+        this.sendStartedAt = sendStartedAt;
     }
 
     @DynamoDbAttribute("send_completed_at")
@@ -90,13 +186,13 @@ public class PaylinkerCampaign {
         this.sendCompletedAt = sendCompletedAt;
     }
 
-    @DynamoDbAttribute("total_recipient_count")
-    public Integer getTotalRecipientCount() {
-        return totalRecipientCount;
+    @DynamoDbAttribute("cancelled_at")
+    public String getCancelledAt() {
+        return cancelledAt;
     }
 
-    public void setTotalRecipientCount(Integer totalRecipientCount) {
-        this.totalRecipientCount = totalRecipientCount;
+    public void setCancelledAt(String cancelledAt) {
+        this.cancelledAt = cancelledAt;
     }
 
     @DynamoDbAttribute("send_success_count")
@@ -133,5 +229,43 @@ public class PaylinkerCampaign {
 
     public void setUnviewedCount(Integer unviewedCount) {
         this.unviewedCount = unviewedCount;
+    }
+
+    @DynamoDbAttribute("total_recipient_count")
+    public Integer getTotalRecipientCount() {
+        return totalRecipientCount;
+    }
+
+    public void setTotalRecipientCount(Integer totalRecipientCount) {
+        this.totalRecipientCount = totalRecipientCount;
+    }
+
+    @DynamoDbAttribute("created_at")
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    @DynamoDbAttribute("gsi1_pk")
+    @DynamoDbSecondaryPartitionKey(indexNames = INDEX_GSI1)
+    public String getGsi1Pk() {
+        return gsi1Pk;
+    }
+
+    public void setGsi1Pk(String gsi1Pk) {
+        this.gsi1Pk = gsi1Pk;
+    }
+
+    @DynamoDbAttribute("gsi1_sk")
+    @DynamoDbSecondarySortKey(indexNames = INDEX_GSI1)
+    public String getGsi1Sk() {
+        return gsi1Sk;
+    }
+
+    public void setGsi1Sk(String gsi1Sk) {
+        this.gsi1Sk = gsi1Sk;
     }
 }
