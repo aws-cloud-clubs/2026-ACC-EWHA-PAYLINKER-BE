@@ -24,6 +24,10 @@ public class PaylinkerRecipient {
         return "RECIPIENT#" + recipientId;
     }
 
+    public static String sk() {
+        return SK_PROFILE;
+    }
+
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
