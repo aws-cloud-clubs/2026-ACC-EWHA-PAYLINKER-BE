@@ -7,6 +7,7 @@ import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -21,6 +22,8 @@ public class DashboardService {
     }
 
     public DashboardCampaignSummaryResponse getCampaignSummary(String adminId, String campaignId) {
+        Objects.requireNonNull(adminId, "adminId");
+
         PaylinkerCampaign campaign = campaignRepository.findByCampaignId(campaignId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND));
 
