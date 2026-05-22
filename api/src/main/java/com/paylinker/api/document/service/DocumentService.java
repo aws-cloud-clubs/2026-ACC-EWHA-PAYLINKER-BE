@@ -11,6 +11,7 @@ import com.paylinker.api.entity.PaylinkerDocument;
 import com.paylinker.api.entity.PaylinkerDocumentMatch;
 import com.paylinker.api.entity.PaylinkerRecipient;
 import com.paylinker.api.entity.PaylinkerUploadBatch;
+import com.paylinker.api.entity.enums.DocumentMatchStatus;
 import com.paylinker.api.repository.CampaignRecipientRepository;
 import com.paylinker.api.repository.CampaignRepository;
 import com.paylinker.api.repository.DocumentMatchRepository;
@@ -318,7 +319,7 @@ public class DocumentService {
             match.setCampaignRecipientId(recipient.getCampaignRecipientId());
             match.setRecipientId(recipient.getRecipientId());
             match.setDocumentId(documentId);
-            match.setMatchStatus(status);
+            match.setMatchStatus(DocumentMatchStatus.valueOf(status));
             match.setMatchKey(matchKey);
             match.setCreatedAt(now);
             match.setGsi1Pk(PaylinkerDocumentMatch.gsi1Pk(campaignId, status));
