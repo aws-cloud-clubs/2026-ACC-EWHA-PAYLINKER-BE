@@ -1,5 +1,6 @@
 package com.paylinker.api.entity;
 
+import com.paylinker.api.entity.enums.DocumentMatchStatus;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
@@ -22,7 +23,7 @@ public class PaylinkerDocumentMatch {
     private String campaignRecipientId;
     private String recipientId;
     private String documentId;
-    private String matchStatus;
+    private DocumentMatchStatus matchStatus;
     private String matchKey;
     private String createdAt;
     private String gsi1Pk;
@@ -94,11 +95,11 @@ public class PaylinkerDocumentMatch {
     }
 
     @DynamoDbAttribute("match_status")
-    public String getMatchStatus() {
+    public DocumentMatchStatus getMatchStatus() {
         return matchStatus;
     }
 
-    public void setMatchStatus(String matchStatus) {
+    public void setMatchStatus(DocumentMatchStatus matchStatus) {
         this.matchStatus = matchStatus;
     }
 
