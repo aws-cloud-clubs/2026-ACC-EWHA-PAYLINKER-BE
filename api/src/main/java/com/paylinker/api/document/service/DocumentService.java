@@ -2,19 +2,24 @@ package com.paylinker.api.document.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paylinker.api.document.dto.DocumentMatchItem;
+import com.paylinker.api.document.dto.DocumentMatchResultsResponse;
 import com.paylinker.api.document.dto.DocumentUploadResponse;
 import com.paylinker.api.entity.PaylinkerCampaign;
 import com.paylinker.api.entity.PaylinkerCampaignRecipient;
 import com.paylinker.api.entity.PaylinkerDocument;
 import com.paylinker.api.entity.PaylinkerDocumentMatch;
+import com.paylinker.api.entity.PaylinkerRecipient;
 import com.paylinker.api.entity.PaylinkerUploadBatch;
 import com.paylinker.api.repository.CampaignRecipientRepository;
 import com.paylinker.api.repository.CampaignRepository;
 import com.paylinker.api.repository.DocumentMatchRepository;
 import com.paylinker.api.repository.DocumentRepository;
+import com.paylinker.api.repository.RecipientRepository;
 import com.paylinker.api.repository.UploadBatchRepository;
 import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
+import com.paylinker.common.util.MaskingUtil;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.OffsetDateTime;
@@ -23,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -44,6 +50,7 @@ public class DocumentService {
 
     private final CampaignRepository campaignRepository;
     private final CampaignRecipientRepository campaignRecipientRepository;
+    private final RecipientRepository recipientRepository;
     private final UploadBatchRepository uploadBatchRepository;
     private final DocumentRepository documentRepository;
     private final DocumentMatchRepository documentMatchRepository;
@@ -52,6 +59,7 @@ public class DocumentService {
 
     public DocumentService(CampaignRepository campaignRepository,
                            CampaignRecipientRepository campaignRecipientRepository,
+                           RecipientRepository recipientRepository,
                            UploadBatchRepository uploadBatchRepository,
                            DocumentRepository documentRepository,
                            DocumentMatchRepository documentMatchRepository,
@@ -59,6 +67,7 @@ public class DocumentService {
                            ObjectMapper objectMapper) {
         this.campaignRepository = campaignRepository;
         this.campaignRecipientRepository = campaignRecipientRepository;
+        this.recipientRepository = recipientRepository;
         this.uploadBatchRepository = uploadBatchRepository;
         this.documentRepository = documentRepository;
         this.documentMatchRepository = documentMatchRepository;
@@ -73,11 +82,7 @@ public class DocumentService {
                                          String matchKey) {
         validateUploadInput(file, documentType, matchKey);
 
-        PaylinkerCampaign campaign = campaignRepository.findByCampaignId(campaignId)
-                .orElseThrow(() -> new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND));
-        if (!adminId.equals(campaign.getAdminId())) {
-            throw new CustomException(ErrorCode.CAMPAIGN_FORBIDDEN);
-        }
+        PaylinkerCampaign campaign = verifyOwnership(adminId, campaignId);
         if (!UPLOADABLE_CAMPAIGN_STATUSES.contains(campaign.getStatus())) {
             throw new CustomException(ErrorCode.DOCUMENT_CAMPAIGN_INVALID_STATUS);
         }
@@ -116,6 +121,88 @@ public class DocumentService {
                 outcome.unmatchedDocumentCount,
                 outcome.unmatchedRecipientCount,
                 outcome.duplicateMatchCount);
+    }
+
+    public DocumentMatchResultsResponse getMatchResults(String adminId, String campaignId, String filter) {
+        PaylinkerCampaign campaign = verifyOwnership(adminId, campaignId);
+
+        int matchedCount = documentMatchRepository.countByStatus(campaignId, PaylinkerDocumentMatch.STATUS_MATCHED);
+        int unmatchedRecipientCount = documentMatchRepository.countByStatus(campaignId, PaylinkerDocumentMatch.STATUS_UNMATCHED);
+        int duplicateMatchCount = documentMatchRepository.countByStatus(campaignId, PaylinkerDocumentMatch.STATUS_DUPLICATE_MATCH);
+        int totalDocumentCount = documentRepository.countByCampaign(campaignId);
+        int totalRecipientCount = campaign.getTotalRecipientCount() == null ? 0 : campaign.getTotalRecipientCount();
+
+        boolean canProceed = matchedCount > 0
+                && duplicateMatchCount == 0
+                && unmatchedRecipientCount == 0;
+
+        List<PaylinkerDocumentMatch> rows = new ArrayList<>();
+        for (String status : resolveFilterStatuses(filter)) {
+            rows.addAll(documentMatchRepository.findByStatus(campaignId, status));
+        }
+
+        Set<String> recipientIds = rows.stream()
+                .map(PaylinkerDocumentMatch::getRecipientId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<String, PaylinkerRecipient> recipientMap = recipientRepository.findAllByIds(recipientIds);
+
+        List<DocumentMatchItem> items = rows.stream()
+                .map(row -> toMatchItem(row, recipientMap))
+                .toList();
+
+        return new DocumentMatchResultsResponse(
+                campaignId,
+                totalRecipientCount,
+                totalDocumentCount,
+                matchedCount,
+                unmatchedRecipientCount,
+                duplicateMatchCount,
+                canProceed,
+                items);
+    }
+
+    private List<String> resolveFilterStatuses(String filter) {
+        if (filter == null || filter.isBlank() || "ALL".equalsIgnoreCase(filter)) {
+            return List.of(
+                    PaylinkerDocumentMatch.STATUS_UNMATCHED,
+                    PaylinkerDocumentMatch.STATUS_DUPLICATE_MATCH,
+                    PaylinkerDocumentMatch.STATUS_MISMATCHED,
+                    PaylinkerDocumentMatch.STATUS_MATCHED);
+        }
+        return switch (filter.toUpperCase()) {
+            case "UNMATCHED" -> List.of(PaylinkerDocumentMatch.STATUS_UNMATCHED);
+            case "DUPLICATE" -> List.of(PaylinkerDocumentMatch.STATUS_DUPLICATE_MATCH);
+            case "MATCHED" -> List.of(PaylinkerDocumentMatch.STATUS_MATCHED);
+            default -> List.of(
+                    PaylinkerDocumentMatch.STATUS_UNMATCHED,
+                    PaylinkerDocumentMatch.STATUS_DUPLICATE_MATCH,
+                    PaylinkerDocumentMatch.STATUS_MISMATCHED,
+                    PaylinkerDocumentMatch.STATUS_MATCHED);
+        };
+    }
+
+    private DocumentMatchItem toMatchItem(PaylinkerDocumentMatch row, Map<String, PaylinkerRecipient> recipientMap) {
+        PaylinkerRecipient recipient = row.getRecipientId() == null
+                ? null
+                : recipientMap.get(row.getRecipientId());
+        return new DocumentMatchItem(
+                row.getCampaignRecipientId(),
+                recipient == null ? null : recipient.getName(),
+                recipient == null ? null : MaskingUtil.maskEmployeeNo(recipient.getEmployeeNo()),
+                recipient == null ? null : MaskingUtil.maskEmail(recipient.getEmail()),
+                row.getMatchStatus(),
+                row.getMatchKey(),
+                row.getDocumentId());
+    }
+
+    private PaylinkerCampaign verifyOwnership(String adminId, String campaignId) {
+        PaylinkerCampaign campaign = campaignRepository.findByCampaignId(campaignId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND));
+        if (!adminId.equals(campaign.getAdminId())) {
+            throw new CustomException(ErrorCode.CAMPAIGN_FORBIDDEN);
+        }
+        return campaign;
     }
 
     private void validateUploadInput(MultipartFile file, String documentType, String matchKey) {
