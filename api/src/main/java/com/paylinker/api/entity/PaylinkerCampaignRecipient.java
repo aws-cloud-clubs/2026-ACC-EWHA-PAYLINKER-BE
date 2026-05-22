@@ -124,29 +124,29 @@ public class PaylinkerCampaignRecipient {
     }
 
     @DynamoDbAttribute("validation_status")
-    public String getValidationStatus() {
+    public RecipientValidationStatus getValidationStatus() {
         return validationStatus;
     }
 
-    public void setValidationStatus(String validationStatus) {
+    public void setValidationStatus(RecipientValidationStatus validationStatus) {
         this.validationStatus = validationStatus;
     }
 
     @DynamoDbAttribute("document_match_status")
-    public String getDocumentMatchStatus() {
+    public DocumentMatchStatus getDocumentMatchStatus() {
         return documentMatchStatus;
     }
 
-    public void setDocumentMatchStatus(String documentMatchStatus) {
+    public void setDocumentMatchStatus(DocumentMatchStatus documentMatchStatus) {
         this.documentMatchStatus = documentMatchStatus;
     }
 
     @DynamoDbAttribute("send_status")
-    public String getSendStatus() {
+    public SendJobStatus  getSendStatus() {
         return sendStatus;
     }
 
-    public void setSendStatus(String sendStatus) {
+    public void setSendStatus(SendJobStatus  sendStatus) {
         this.sendStatus = sendStatus;
     }
 
@@ -178,11 +178,11 @@ public class PaylinkerCampaignRecipient {
     }
 
     @DynamoDbAttribute("failure_reason")
-    public String getFailureReason() {
+    public SendFailureReason  getFailureReason() {
         return failureReason;
     }
 
-    public void setFailureReason(String failureReason) {
+    public void setFailureReason(SendFailureReason  failureReason) {
         this.failureReason = failureReason;
     }
 
