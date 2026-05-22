@@ -24,6 +24,7 @@ public class CampaignRecipientRepository {
 
     private final DynamoDbClient dynamoDbClient;
     private final String tableName;
+    private final DynamoDbTable<PaylinkerCampaignRecipient> table;
     private final DynamoDbIndex<PaylinkerCampaignRecipient> gsi1;
     private final DynamoDbIndex<PaylinkerCampaignRecipient> gsi2;
 
@@ -32,11 +33,21 @@ public class CampaignRecipientRepository {
                                        @Value("${aws.dynamodb.table-prefix}") String tablePrefix) {
         this.dynamoDbClient = dynamoDbClient;
         this.tableName = tablePrefix + "-campaign-recipient";
-        DynamoDbTable<PaylinkerCampaignRecipient> table = enhancedClient.table(
+        this.table = enhancedClient.table(
                 tableName,
                 TableSchema.fromBean(PaylinkerCampaignRecipient.class));
         this.gsi1 = table.index(PaylinkerCampaignRecipient.INDEX_GSI1);
         this.gsi2 = table.index(PaylinkerCampaignRecipient.INDEX_GSI2);
+    }
+
+    public List<PaylinkerCampaignRecipient> findAll(String campaignId) {
+        QueryEnhancedRequest request = QueryEnhancedRequest.builder()
+                .queryConditional(QueryConditional.keyEqualTo(
+                        Key.builder().partitionValue(PaylinkerCampaignRecipient.pk(campaignId)).build()))
+                .build();
+        return StreamSupport.stream(table.query(request).spliterator(), false)
+                .flatMap(page -> page.items().stream())
+                .collect(Collectors.toList());
     }
 
     public List<PaylinkerCampaignRecipient> findUnviewedPreviews(String campaignId, int limit) {
