@@ -7,13 +7,17 @@ import com.paylinker.api.dashboard.dto.DashboardFailureResponse;
 import com.paylinker.api.dashboard.dto.DashboardSummaryResponse;
 import com.paylinker.api.dashboard.dto.DashboardUnviewedRecipientPreview;
 import com.paylinker.api.dashboard.dto.DashboardUnviewedResponse;
+import com.paylinker.api.dashboard.dto.DashboardViewTrendPoint;
+import com.paylinker.api.dashboard.dto.DashboardViewTrendResponse;
 import com.paylinker.api.entity.PaylinkerCampaign;
 import com.paylinker.api.entity.PaylinkerCampaignRecipient;
 import com.paylinker.api.entity.PaylinkerRecipient;
+import com.paylinker.api.entity.PaylinkerStatSnapshot;
 import com.paylinker.api.campaign.repository.CampaignRecipientRepository;
 import com.paylinker.api.campaign.repository.CampaignRepository;
 import com.paylinker.api.notification.repository.CheckItemRepository;
 import com.paylinker.api.repository.RecipientRepository;
+import com.paylinker.api.repository.StatSnapshotRepository;
 import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
 import com.paylinker.common.util.MaskingUtil;
@@ -33,20 +37,24 @@ public class DashboardService {
     private static final int VIEW_RATE_SCALE = 4;
     private static final int RECENT_CAMPAIGN_LIMIT = 5;
     private static final int RECIPIENT_PREVIEW_LIMIT = 5;
+    private static final String TREND_RANGE_DEFAULT_FROM = "1970-01-01T00:00:00Z";
 
     private final CampaignRepository campaignRepository;
     private final CheckItemRepository checkItemRepository;
     private final CampaignRecipientRepository campaignRecipientRepository;
     private final RecipientRepository recipientRepository;
+    private final StatSnapshotRepository statSnapshotRepository;
 
     public DashboardService(CampaignRepository campaignRepository,
                             CheckItemRepository checkItemRepository,
                             CampaignRecipientRepository campaignRecipientRepository,
-                            RecipientRepository recipientRepository) {
+                            RecipientRepository recipientRepository,
+                            StatSnapshotRepository statSnapshotRepository) {
         this.campaignRepository = campaignRepository;
         this.checkItemRepository = checkItemRepository;
         this.campaignRecipientRepository = campaignRecipientRepository;
         this.recipientRepository = recipientRepository;
+        this.statSnapshotRepository = statSnapshotRepository;
     }
 
     public DashboardCampaignSummaryResponse getCampaignSummary(String adminId, String campaignId) {
@@ -142,6 +150,69 @@ public class DashboardService {
                 .toList();
 
         return new DashboardFailureResponse(campaignId, totalFailedCount, previews);
+    }
+
+    public DashboardViewTrendResponse getViewTrend(String adminId, String campaignId, String from, String to) {
+        PaylinkerCampaign campaign = verifyOwnership(adminId, campaignId);
+
+        String fromIso = resolveFrom(from, campaign);
+        String toIso = resolveTo(to);
+
+        BigDecimal currentViewRate = statSnapshotRepository.findLatest(campaignId)
+                .map(PaylinkerStatSnapshot::getViewRate)
+                .map(this::toScaledRate)
+                .orElseGet(() -> BigDecimal.ZERO.setScale(VIEW_RATE_SCALE, RoundingMode.HALF_UP));
+
+        List<DashboardViewTrendPoint> points = isRangeInverted(fromIso, toIso)
+                ? List.of()
+                : statSnapshotRepository.findInRange(campaignId, fromIso, toIso).stream()
+                        .map(snapshot -> new DashboardViewTrendPoint(
+                                snapshot.getSnapshotAt(),
+                                snapshot.getViewedCount(),
+                                toScaledRate(snapshot.getViewRate())))
+                        .toList();
+
+        return new DashboardViewTrendResponse(
+                campaign.getCampaignId(),
+                campaign.getCampaignName(),
+                currentViewRate,
+                campaign.getTotalRecipientCount(),
+                points);
+    }
+
+    private String resolveFrom(String from, PaylinkerCampaign campaign) {
+        if (from != null && !from.isBlank()) {
+            return from;
+        }
+        if (campaign.getSendStartedAt() != null && !campaign.getSendStartedAt().isBlank()) {
+            return campaign.getSendStartedAt();
+        }
+        if (campaign.getSendCompletedAt() != null && !campaign.getSendCompletedAt().isBlank()) {
+            return campaign.getSendCompletedAt();
+        }
+        return TREND_RANGE_DEFAULT_FROM;
+    }
+
+    private String resolveTo(String to) {
+        if (to != null && !to.isBlank()) {
+            return to;
+        }
+        return OffsetDateTime.now(ZoneOffset.UTC).toString();
+    }
+
+    private boolean isRangeInverted(String fromIso, String toIso) {
+        try {
+            return OffsetDateTime.parse(fromIso).isAfter(OffsetDateTime.parse(toIso));
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private BigDecimal toScaledRate(Double rate) {
+        if (rate == null) {
+            return BigDecimal.ZERO.setScale(VIEW_RATE_SCALE, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.valueOf(rate).setScale(VIEW_RATE_SCALE, RoundingMode.HALF_UP);
     }
 
     private DashboardCampaignSummaryCard toCard(PaylinkerCampaign campaign) {
