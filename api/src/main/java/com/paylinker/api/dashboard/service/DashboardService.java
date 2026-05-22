@@ -31,13 +31,7 @@ public class DashboardService {
 
     public DashboardCampaignSummaryResponse getCampaignSummary(String adminId, String campaignId) {
         Objects.requireNonNull(adminId, "adminId");
-
-        PaylinkerCampaign campaign = campaignRepository.findByCampaignId(campaignId)
-                .orElseThrow(() -> new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND));
-
-        if (!adminId.equals(campaign.getAdminId())) {
-            throw new CustomException(ErrorCode.CAMPAIGN_FORBIDDEN);
-        }
+        PaylinkerCampaign campaign = verifyOwnership(adminId, campaignId);
 
         return new DashboardCampaignSummaryResponse(
                 campaign.getCampaignId(),
@@ -90,6 +84,15 @@ public class DashboardService {
                 campaign.getUnviewedCount(),
                 calculateViewRate(campaign.getViewedCount(), campaign.getTotalRecipientCount())
         );
+    }
+
+    private PaylinkerCampaign verifyOwnership(String adminId, String campaignId) {
+        PaylinkerCampaign campaign = campaignRepository.findByCampaignId(campaignId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND));
+        if (!adminId.equals(campaign.getAdminId())) {
+            throw new CustomException(ErrorCode.CAMPAIGN_FORBIDDEN);
+        }
+        return campaign;
     }
 
     private BigDecimal calculateViewRate(Integer viewedCount, Integer totalRecipientCount) {
