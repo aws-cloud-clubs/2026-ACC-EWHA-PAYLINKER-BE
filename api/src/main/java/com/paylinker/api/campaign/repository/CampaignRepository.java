@@ -59,7 +59,7 @@ public class CampaignRepository {
                 .toList();
     }
 
-    // 이름 중복 검사를 위한 메서드
+    // 이름 중복 검사를 위한 메서드 (필터링 최적화 적용된 최신 버전 유지)
     public boolean existsByAdminIdAndCampaignName(String adminId, String campaignName) {
         DynamoDbTable<PaylinkerCampaign> campaignTable =
                 enhancedClient.table("paylinker_campaign", TableSchema.fromBean(PaylinkerCampaign.class));
