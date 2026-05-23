@@ -86,7 +86,7 @@ public class CampaignUpdateService {
         auditLog.setGsi2Sk(createdAt);
 
         // 6. DB 트랜잭션 업데이트
-        campaignRepository.updateCampaignWithTransaction(campaign, limit, auditLog);
+        campaignRepository.saveCampaignWithTransaction(campaign, limit, auditLog);
 
         // 7. 응답 반환 (상세 정보)
         return new CampaignDetailResponse(
