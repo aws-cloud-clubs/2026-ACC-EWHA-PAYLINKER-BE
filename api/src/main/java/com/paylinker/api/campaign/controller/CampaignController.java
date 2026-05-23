@@ -2,15 +2,8 @@ package com.paylinker.api.campaign.controller;
 
 import com.paylinker.api.campaign.dto.request.CampaignCreateRequest;
 import com.paylinker.api.campaign.dto.request.CampaignUpdateRequest;
-import com.paylinker.api.campaign.dto.response.CampaignCancelResponse;
-import com.paylinker.api.campaign.dto.response.CampaignCreateResponse;
-import com.paylinker.api.campaign.dto.response.CampaignDetailResponse;
-import com.paylinker.api.campaign.dto.response.CampaignListResponse;
-import com.paylinker.api.campaign.service.CampaignCancelService;
-import com.paylinker.api.campaign.service.CampaignCreateService;
-import com.paylinker.api.campaign.service.CampaignService;
-import com.paylinker.api.campaign.service.CampaignUpdateService;
-import com.paylinker.api.campaign.service.CampaignDetailService;
+import com.paylinker.api.campaign.dto.response.*;
+import com.paylinker.api.campaign.service.*;
 import com.paylinker.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -30,13 +23,15 @@ public class CampaignController {
     private final CampaignUpdateService campaignUpdateService;
     private final CampaignCancelService campaignCancelService;
     private final CampaignDetailService campaignDetailService;
+    private final CampaignFinalReviewService campaignFinalReviewService;
 
-    public CampaignController(CampaignService campaignService, CampaignCreateService campaignCreateService, CampaignUpdateService campaignUpdateService, CampaignCancelService campaignCancelService1, CampaignDetailService campaignDetailService) {
+    public CampaignController(CampaignService campaignService, CampaignCreateService campaignCreateService, CampaignUpdateService campaignUpdateService, CampaignCancelService campaignCancelService1, CampaignDetailService campaignDetailService, CampaignFinalReviewService campaignFinalReviewService) {
         this.campaignService = campaignService;
         this.campaignCreateService = campaignCreateService;
         this.campaignUpdateService = campaignUpdateService;
         this.campaignCancelService = campaignCancelService1;
         this.campaignDetailService = campaignDetailService;
+        this.campaignFinalReviewService = campaignFinalReviewService;
     }
 
     @GetMapping
@@ -100,5 +95,16 @@ public class CampaignController {
         CampaignDetailResponse responseData = campaignDetailService.getCampaignDetails(adminId, campaignId);
 
         return ResponseEntity.ok(ApiResponse.ok("캠페인 상세 조회 성공", responseData));
+    }
+
+    @GetMapping("/{campaignId}/final-review")
+    public ResponseEntity<ApiResponse<CampaignFinalReviewResponse>> getFinalReviewInfo(
+            @PathVariable String campaignId,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignFinalReviewResponse responseData = campaignFinalReviewService.getFinalReviewInfo(adminId, campaignId);
+
+        return ResponseEntity.ok(ApiResponse.ok("발송 전 최종 확인 정보 조회 성공", responseData));
     }
 }
