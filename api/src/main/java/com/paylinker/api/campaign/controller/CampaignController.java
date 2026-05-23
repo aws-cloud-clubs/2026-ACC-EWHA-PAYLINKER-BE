@@ -63,7 +63,7 @@ public class CampaignController {
 
         return ResponseEntity.status(201).body(ApiResponse.created("캠페인 생성 완료", responseData));
     }
-    
+
     @PostMapping("/{campaignId}/reminders")
     @Operation(
             summary = "미확인 수신자 리마인드 발송 (SND-001)",
