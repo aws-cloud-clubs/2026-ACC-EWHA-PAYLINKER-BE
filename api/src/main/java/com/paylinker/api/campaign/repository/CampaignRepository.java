@@ -39,7 +39,7 @@ public class CampaignRepository {
                 .build());
         return resp.hasItem() ? Optional.of(resp.item()) : Optional.empty();
     }
-    
+
     private final DynamoDbEnhancedClient enhancedClient;
 
     public List<PaylinkerCampaign> findAllByAdminId(String adminId) {
