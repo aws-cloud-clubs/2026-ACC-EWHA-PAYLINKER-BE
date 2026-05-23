@@ -11,8 +11,8 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
-import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
 import software.amazon.awssdk.services.dynamodb.model.Update;
 
@@ -24,6 +24,20 @@ public class CampaignRecipientRepository {
 
     @Value("${aws.dynamodb.table-prefix}")
     private String tablePrefix;
+
+    /**
+     * GSI1: gsi1_pk = CAMPAIGN#{campaignId}#ST#{send_status}
+     * 인덱스 이름은 aws.dynamodb.campaign-recipient.gsi1-name 으로 주입
+     */
+    @Value("${aws.dynamodb.campaign-recipient.gsi1-name}")
+    private String gsi1Name;
+
+    /**
+     * GSI2: gsi2_pk = CAMPAIGN#{campaignId}#VW#{viewed}
+     * 인덱스 이름은 aws.dynamodb.campaign-recipient.gsi2-name 으로 주입
+     */
+    @Value("${aws.dynamodb.campaign-recipient.gsi2-name}")
+    private String gsi2Name;
 
     private String tableName() {
         return tablePrefix + "-campaign-recipient";
@@ -37,22 +51,14 @@ public class CampaignRecipientRepository {
         return resp.hasItem() ? Optional.of(resp.item()) : Optional.empty();
     }
 
-    /** GSI2(PK=CAMPAIGN#{id}#VW#0) 대응: 미열람 수신자 조회 */
+    /** GSI2(gsi2_pk = CAMPAIGN#{id}#VW#0): 미열람 수신자 전체 조회 */
     public List<Map<String, AttributeValue>> findUnviewedByCampaignId(String campaignId) {
-        return scanWithFilter(
-                "campaign_id = :campaignId AND viewed = :notViewed",
-                Map.of(
-                        ":campaignId", AttributeValue.fromS(campaignId),
-                        ":notViewed", AttributeValue.fromN("0")));
+        return queryByGsiPk(gsi2Name, "gsi2_pk", "CAMPAIGN#" + campaignId + "#VW#0");
     }
 
-    /** GSI1(PK=CAMPAIGN#{id}#ST#FAILED) 대응: 발송 실패 수신자 조회 */
+    /** GSI1(gsi1_pk = CAMPAIGN#{id}#ST#FAILED): 발송 실패 수신자 전체 조회 */
     public List<Map<String, AttributeValue>> findFailedByCampaignId(String campaignId) {
-        return scanWithFilter(
-                "campaign_id = :campaignId AND send_status = :failed",
-                Map.of(
-                        ":campaignId", AttributeValue.fromS(campaignId),
-                        ":failed", AttributeValue.fromS("FAILED")));
+        return queryByGsiPk(gsi1Name, "gsi1_pk", "CAMPAIGN#" + campaignId + "#ST#FAILED");
     }
 
     /** reminder_count 증가 + last_reminder_sent_at 갱신 트랜잭션 아이템 */
@@ -87,19 +93,21 @@ public class CampaignRecipientRepository {
                 .build();
     }
 
-    private List<Map<String, AttributeValue>> scanWithFilter(
-            String filterExpression, Map<String, AttributeValue> expressionValues) {
+    private List<Map<String, AttributeValue>> queryByGsiPk(
+            String indexName, String pkAttrName, String pkValue) {
         List<Map<String, AttributeValue>> results = new ArrayList<>();
-        ScanRequest req = ScanRequest.builder()
+        QueryRequest req = QueryRequest.builder()
                 .tableName(tableName())
-                .filterExpression(filterExpression)
-                .expressionAttributeValues(expressionValues)
+                .indexName(indexName)
+                .keyConditionExpression("#pk = :pkVal")
+                .expressionAttributeNames(Map.of("#pk", pkAttrName))
+                .expressionAttributeValues(Map.of(":pkVal", AttributeValue.fromS(pkValue)))
                 .build();
-        ScanResponse resp;
+        QueryResponse resp;
         do {
-            resp = dynamoDbClient.scan(req);
+            resp = dynamoDbClient.query(req);
             results.addAll(resp.items());
-            if (resp.lastEvaluatedKey().isEmpty()) break;
+            if (!resp.hasLastEvaluatedKey() || resp.lastEvaluatedKey().isEmpty()) break;
             req = req.toBuilder().exclusiveStartKey(resp.lastEvaluatedKey()).build();
         } while (true);
         return results;
