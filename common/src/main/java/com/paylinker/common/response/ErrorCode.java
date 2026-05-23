@@ -17,8 +17,8 @@ public enum ErrorCode {
 
     DOCUMENT_NOT_FOUND(404, "명세서를 찾을 수 없습니다."),
 
-    RECIPIENT_FILE_UNSUPPORTED(400, "지원하지 않는 파일 형식입니다."),
-    RECIPIENT_FILE_TOO_LARGE(413, "업로드 가능한 최대 크기를 초과했습니다."),
+    RECIPIENT_FILE_UNSUPPORTED(400, "지원하지 않는 파일 형식입니다. (.csv 또는 .xlsx 만 허용)"),
+    RECIPIENT_FILE_TOO_LARGE(413, "업로드 가능한 최대 크기(10MB)를 초과했습니다."),
     RECIPIENT_CAMPAIGN_LIMIT_EXCEEDED(409, "캠페인 최대 수신자 수를 초과했습니다."),
 
     RESEND_REQUEST_DUPLICATE(409, "이미 동일한 재전송 요청이 접수되어 있습니다."),
