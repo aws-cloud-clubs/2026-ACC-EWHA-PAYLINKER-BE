@@ -34,7 +34,7 @@ public class DashboardService {
         return new DashboardCampaignSummaryResponse(
                 campaign.getCampaignId(),
                 campaign.getCampaignName(),
-                campaign.getStatus(),
+                campaign.getStatus() != null ? campaign.getStatus().name() : null,
                 campaign.getSendCompletedAt(),
                 campaign.getTotalRecipientCount(),
                 campaign.getSendSuccessCount(),

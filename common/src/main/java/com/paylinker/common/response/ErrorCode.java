@@ -24,6 +24,10 @@ public enum ErrorCode {
     RESEND_REQUEST_DUPLICATE(409, "이미 동일한 재전송 요청이 접수되어 있습니다."),
     RESEND_NOT_ALLOWED(422, "이 캠페인은 재전송 요청을 받지 않습니다."),
     RESEND_LIMIT_EXCEEDED(422, "캠페인 재전송 한도를 초과했습니다."),
+    RESEND_REQUEST_NOT_FOUND(404, "해당 재전송 요청을 찾을 수 없습니다."),
+    RESEND_REQUEST_ALREADY_PROCESSED(409, "이미 처리된 재전송 요청입니다."),
+
+    INVALID_PAGINATION(400, "페이지 번호는 1 이상, 페이지 크기는 1~50 이어야 합니다."),
     ;
 
     private final int httpStatus;

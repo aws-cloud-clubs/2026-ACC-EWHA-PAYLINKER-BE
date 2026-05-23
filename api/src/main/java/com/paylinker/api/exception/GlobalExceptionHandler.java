@@ -2,6 +2,8 @@ package com.paylinker.api.exception;
 
 import com.paylinker.common.response.ApiResponse;
 import com.paylinker.common.response.CustomException;
+import com.paylinker.common.response.ErrorCode;
+import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -28,6 +30,19 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining(", "));
         return ResponseEntity.badRequest()
                 .body(ApiResponse.fail("VALIDATION_ERROR", msg));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException e) {
+        String msg = e.getConstraintViolations().stream()
+                .map(v -> {
+                    String path = v.getPropertyPath().toString();
+                    String param = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1) : path;
+                    return param + ": " + v.getMessage();
+                })
+                .collect(Collectors.joining(", "));
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail(ErrorCode.INVALID_PAGINATION.name(), msg));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
