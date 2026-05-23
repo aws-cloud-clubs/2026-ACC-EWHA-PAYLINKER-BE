@@ -13,6 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,9 +37,11 @@ public class CampaignController {
     public ResponseEntity<ApiResponse<ReminderResponse>> sendReminder(
             @Parameter(description = "캠페인 ID (UUID)", required = true)
             @PathVariable String campaignId,
-            @Valid @RequestBody ReminderRequest request) {
+            @Valid @RequestBody ReminderRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        ReminderResponse data = campaignService.sendReminder(campaignId, request);
+        String requesterId = jwt.getSubject();
+        ReminderResponse data = campaignService.sendReminder(campaignId, request, requesterId);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(ApiResponse.accepted("리마인드 발송 요청이 접수되었습니다.", data));
     }
@@ -51,9 +55,11 @@ public class CampaignController {
     public ResponseEntity<ApiResponse<ManualResendResponse>> manualResend(
             @Parameter(description = "캠페인 ID (UUID)", required = true)
             @PathVariable String campaignId,
-            @Valid @RequestBody ManualResendRequest request) {
+            @Valid @RequestBody ManualResendRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        ManualResendResponse data = campaignService.manualResend(campaignId, request);
+        String requesterId = jwt.getSubject();
+        ManualResendResponse data = campaignService.manualResend(campaignId, request, requesterId);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(ApiResponse.accepted("실패 대상자 재발송 요청이 접수되었습니다.", data));
     }
