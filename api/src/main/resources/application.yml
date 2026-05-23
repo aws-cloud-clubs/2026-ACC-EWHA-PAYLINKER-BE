@@ -1,6 +1,10 @@
 spring:
   application:
     name: paylinker-api
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
   security:
     oauth2:
       resourceserver:
@@ -50,3 +54,7 @@ paylinker:
     scheduler-lock-ttl-seconds: 50
   scheduler:
     enabled: ${SCHEDULER_ENABLED:true}
+  campaign-limit:
+    max-recipients: ${MAX_RECIPIENTS:5000}
+  upload-batch:
+    file-storage-key: ${UPLOAD_BATCH_FILE_STORAGE_KEY:recipients}
