@@ -28,6 +28,10 @@ public enum ErrorCode {
     RESEND_REQUEST_ALREADY_PROCESSED(409, "이미 처리된 재전송 요청입니다."),
 
     INVALID_PAGINATION(400, "페이지 번호는 1 이상, 페이지 크기는 1~50 이어야 합니다."),
+
+    CAMPAIGN_INVALID_INPUT(400, "캠페인 입력값이 유효하지 않습니다."),
+    CAMPAIGN_NAME_DUPLICATE(409, "동일한 캠페인명이 이미 존재합니다."),
+// ...
     ;
 
     private final int httpStatus;
