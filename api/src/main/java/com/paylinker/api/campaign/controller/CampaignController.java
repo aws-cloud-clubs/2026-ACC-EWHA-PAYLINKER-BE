@@ -10,6 +10,7 @@ import com.paylinker.api.campaign.service.CampaignCancelService;
 import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.service.CampaignService;
 import com.paylinker.api.campaign.service.CampaignUpdateService;
+import com.paylinker.api.campaign.service.CampaignDetailService;
 import com.paylinker.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -28,12 +29,14 @@ public class CampaignController {
     private final CampaignCreateService campaignCreateService;
     private final CampaignUpdateService campaignUpdateService;
     private final CampaignCancelService campaignCancelService;
+    private final CampaignDetailService campaignDetailService;
 
-    public CampaignController(CampaignService campaignService, CampaignCreateService campaignCreateService, CampaignUpdateService campaignUpdateService, CampaignCancelService campaignCancelService1) {
+    public CampaignController(CampaignService campaignService, CampaignCreateService campaignCreateService, CampaignUpdateService campaignUpdateService, CampaignCancelService campaignCancelService1, CampaignDetailService campaignDetailService) {
         this.campaignService = campaignService;
         this.campaignCreateService = campaignCreateService;
         this.campaignUpdateService = campaignUpdateService;
         this.campaignCancelService = campaignCancelService1;
+        this.campaignDetailService = campaignDetailService;
     }
 
     @GetMapping
@@ -86,5 +89,16 @@ public class CampaignController {
         CampaignCancelResponse responseData = campaignCancelService.cancelCampaign(adminId, campaignId);
 
         return ResponseEntity.ok(ApiResponse.ok("캠페인 취소 완료", responseData));
+    }
+
+    @GetMapping("/{campaignId}")
+    public ResponseEntity<ApiResponse<CampaignDetailResponse>> getCampaignDetails(
+            @PathVariable String campaignId,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignDetailResponse responseData = campaignDetailService.getCampaignDetails(adminId, campaignId);
+
+        return ResponseEntity.ok(ApiResponse.ok("캠페인 상세 조회 성공", responseData));
     }
 }
