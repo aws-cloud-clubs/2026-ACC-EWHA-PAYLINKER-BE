@@ -1,10 +1,13 @@
 package com.paylinker.api.campaign.controller;
 
 import com.paylinker.api.campaign.dto.request.CampaignCreateRequest;
+import com.paylinker.api.campaign.dto.request.CampaignUpdateRequest;
 import com.paylinker.api.campaign.dto.response.CampaignCreateResponse;
+import com.paylinker.api.campaign.dto.response.CampaignDetailResponse;
 import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.service.CampaignService;
+import com.paylinker.api.campaign.service.CampaignUpdateService;
 import com.paylinker.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -21,10 +24,12 @@ public class CampaignController {
 
     private final CampaignService campaignService;
     private final CampaignCreateService campaignCreateService;
+    private final CampaignUpdateService campaignUpdateService;
 
-    public CampaignController(CampaignService campaignService, CampaignCreateService campaignCreateService) {
+    public CampaignController(CampaignService campaignService, CampaignCreateService campaignCreateService, CampaignUpdateService campaignUpdateService) {
         this.campaignService = campaignService;
         this.campaignCreateService = campaignCreateService;
+        this.campaignUpdateService = campaignUpdateService;
     }
 
     @GetMapping
@@ -54,5 +59,17 @@ public class CampaignController {
         CampaignCreateResponse responseData = campaignCreateService.createCampaign(adminId, request);
 
         return ResponseEntity.status(201).body(ApiResponse.created("캠페인 생성 완료", responseData));
+    }
+
+    @PatchMapping("/{campaignId}")
+    public ResponseEntity<ApiResponse<CampaignDetailResponse>> updateCampaign(
+            @PathVariable String campaignId,
+            @Valid @RequestBody CampaignUpdateRequest request,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignDetailResponse responseData = campaignUpdateService.updateCampaign(adminId, campaignId, request);
+
+        return ResponseEntity.ok(ApiResponse.ok("캠페인 수정 완료", responseData));
     }
 }
