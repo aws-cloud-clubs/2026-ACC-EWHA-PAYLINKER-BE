@@ -2,7 +2,7 @@ package com.paylinker.api.campaign.service;
 
 import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.entity.PaylinkerCampaign;
-import com.paylinker.api.repository.CampaignRepository;
+import com.paylinker.api.campaign.repository.CampaignRepository;
 import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
 import org.springframework.stereotype.Service;
