@@ -39,7 +39,6 @@ public enum ErrorCode {
     REMINDER_NOT_ALLOWED(422, "발송이 완료되지 않은 캠페인에는 리마인드를 보낼 수 없습니다."),
     REMINDER_NO_TARGET(400, "리마인드 발송 대상이 없습니다."),
     REMINDER_SELECTED_REQUIRED(400, "SELECTED 대상 지정 시 campaignRecipientIds는 1개 이상이어야 합니다."),
-
     MANUAL_RESEND_NOT_ALLOWED(422, "발송이 완료되지 않은 캠페인에서는 수동 재발송을 할 수 없습니다."),
     MANUAL_RESEND_NO_TARGET(400, "재발송 가능한 대상이 없습니다. (영구 실패는 자동 제외됩니다.)"),
     MANUAL_RESEND_SELECTED_REQUIRED(400, "SELECTED 대상 지정 시 campaignRecipientIds는 1개 이상이어야 합니다.")
