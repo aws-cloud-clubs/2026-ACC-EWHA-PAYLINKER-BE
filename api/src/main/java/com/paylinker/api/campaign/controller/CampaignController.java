@@ -4,10 +4,10 @@ import com.paylinker.api.campaign.dto.request.CampaignCreateRequest;
 import com.paylinker.api.campaign.dto.request.CampaignUpdateRequest;
 import com.paylinker.api.campaign.dto.response.CampaignCreateResponse;
 import com.paylinker.api.campaign.dto.response.CampaignDetailResponse;
+import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.dto.request.ManualResendRequest;
 import com.paylinker.api.campaign.dto.request.ReminderRequest;
-import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.campaign.dto.response.ManualResendResponse;
 import com.paylinker.api.campaign.dto.response.ReminderResponse;
 import com.paylinker.api.campaign.service.CampaignService;
@@ -79,7 +79,7 @@ public class CampaignController {
 
         return ResponseEntity.ok(ApiResponse.ok("캠페인 수정 완료", responseData));
     }
-
+    
     @PostMapping("/{campaignId}/reminders")
     @Operation(
             summary = "미확인 수신자 리마인드 발송 (SND-001)",
