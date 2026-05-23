@@ -5,6 +5,9 @@ import com.paylinker.api.campaign.dto.response.SendFailureResponse;
 import com.paylinker.api.campaign.dto.response.ViewHistoryItem;
 import com.paylinker.api.campaign.dto.response.ViewHistoryResponse;
 import com.paylinker.api.campaign.repository.CampaignRecipientRepository;
+import com.paylinker.api.campaign.repository.CampaignRepository;
+import com.paylinker.common.response.CustomException;
+import com.paylinker.common.response.ErrorCode;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -16,10 +19,14 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 @RequiredArgsConstructor
 public class CampaignService {
 
+    private final CampaignRepository campaignRepository;
     private final CampaignRecipientRepository campaignRecipientRepository;
 
     // RST-002
-    public ViewHistoryResponse getViewHistory(String campaignId, String filter, int page, int pageSize) {
+    public ViewHistoryResponse getViewHistory(String campaignId, String filter,
+                                              int page, int pageSize, String requesterId) {
+        validateCampaignOwnership(campaignId, requesterId);
+
         List<Map<String, AttributeValue>> all = campaignRecipientRepository.findByCampaignId(campaignId);
 
         int viewedCount = (int) all.stream()
@@ -41,11 +48,12 @@ public class CampaignService {
 
         int totalCount = filteredRaw.size();
         int fromIndex = (page - 1) * pageSize;
-        List<ViewHistoryItem> pageItems = filteredRaw.stream()
-                .skip(fromIndex)
-                .limit(pageSize)
-                .map(this::toViewHistoryItem)
-                .toList();
+        List<ViewHistoryItem> pageItems = fromIndex < totalCount
+                ? filteredRaw.subList(fromIndex, Math.min(fromIndex + pageSize, totalCount))
+                        .stream()
+                        .map(this::toViewHistoryItem)
+                        .toList()
+                : List.of();
 
         return ViewHistoryResponse.builder()
                 .campaignId(campaignId)
@@ -59,13 +67,17 @@ public class CampaignService {
     }
 
     // RST-001
-    public SendFailureResponse getSendFailures(String campaignId, String failureReason, int page, int pageSize) {
+    public SendFailureResponse getSendFailures(String campaignId, String failureReason,
+                                               int page, int pageSize, String requesterId) {
+        validateCampaignOwnership(campaignId, requesterId);
+
         List<Map<String, AttributeValue>> all = campaignRecipientRepository.findFailedByCampaignId(campaignId);
 
         List<SendFailureItem> filtered = all.stream()
                 .filter(i -> failureReason == null || failureReason.equals(str(i, "send_failure_reason")))
                 .map(this::toSendFailureItem)
-                .sorted(Comparator.comparing(SendFailureItem::failedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .sorted(Comparator.comparing(SendFailureItem::failedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
 
         int totalCount = filtered.size();
@@ -81,6 +93,16 @@ public class CampaignService {
                 .pageSize(pageSize)
                 .items(pageItems)
                 .build();
+    }
+
+    /** 캠페인 존재 여부 + 소유자 검증 */
+    private void validateCampaignOwnership(String campaignId, String requesterId) {
+        Map<String, AttributeValue> campaign = campaignRepository.findById(campaignId)
+                .orElseThrow(() -> new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND));
+        String ownerId = str(campaign, "owner_id");
+        if (ownerId != null && !ownerId.equals(requesterId)) {
+            throw new CustomException(ErrorCode.CAMPAIGN_FORBIDDEN);
+        }
     }
 
     private ViewHistoryItem toViewHistoryItem(Map<String, AttributeValue> item) {
@@ -137,12 +159,14 @@ public class CampaignService {
         return val != null ? val.s() : null;
     }
 
+    /**
+     * is_viewed 필드 타입 방어 처리: BOOL → N(0=false) → S 순으로 폴백
+     */
     private Boolean bool(Map<String, AttributeValue> item, String key) {
         AttributeValue val = item.get(key);
         if (val == null) return null;
-        // BOOL 타입
         if (val.bool() != null) return val.bool();
-        // 문자열로 저장된 경우
+        if (val.n() != null) return !"0".equals(val.n());
         if (val.s() != null) return Boolean.parseBoolean(val.s());
         return null;
     }
