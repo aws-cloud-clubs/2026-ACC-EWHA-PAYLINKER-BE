@@ -41,15 +41,22 @@ public class CampaignRepository {
                 .build());
         return resp.hasItem() ? Optional.of(resp.item()) : Optional.empty();
     }
-
+    
     private final DynamoDbEnhancedClient enhancedClient;
 
-    public List<PaylinkerCampaign> findAllByAdminId(String adminId) {
-        // 테이블 객체를 전역 변수로 두지 않고 메서드 내부에서 동적 생성하여 구조 충돌 방지
-        DynamoDbTable<PaylinkerCampaign> campaignTable =
-                enhancedClient.table("paylinker_campaign", TableSchema.fromBean(PaylinkerCampaign.class));
+    // 테이블 객체를 메서드 내부에서 동적으로 가져오는 Getter 메서드들
+    public DynamoDbTable<PaylinkerCampaign> getCampaignTable() {
+        return enhancedClient.table("paylinker_campaign", TableSchema.fromBean(PaylinkerCampaign.class));
+    }
+    public DynamoDbTable<PaylinkerCampaignLimit> getLimitTable() {
+        return enhancedClient.table("paylinker_campaign_limit", TableSchema.fromBean(PaylinkerCampaignLimit.class));
+    }
+    public DynamoDbTable<PaylinkerAuditLog> getAuditLogTable() {
+        return enhancedClient.table("paylinker_audit_log", TableSchema.fromBean(PaylinkerAuditLog.class));
+    }
 
-        DynamoDbIndex<PaylinkerCampaign> gsi1 = campaignTable.index(PaylinkerCampaign.INDEX_GSI1);
+    public List<PaylinkerCampaign> findAllByAdminId(String adminId) {
+        DynamoDbIndex<PaylinkerCampaign> gsi1 = getCampaignTable().index(PaylinkerCampaign.INDEX_GSI1);
 
         QueryConditional queryConditional = QueryConditional.keyEqualTo(k ->
                 k.partitionValue(PaylinkerCampaign.gsi1Pk(adminId)));
@@ -61,10 +68,7 @@ public class CampaignRepository {
 
     // 이름 중복 검사를 위한 메서드 (필터링 최적화 적용된 최신 버전 유지)
     public boolean existsByAdminIdAndCampaignName(String adminId, String campaignName) {
-        DynamoDbTable<PaylinkerCampaign> campaignTable =
-                enhancedClient.table("paylinker_campaign", TableSchema.fromBean(PaylinkerCampaign.class));
-
-        DynamoDbIndex<PaylinkerCampaign> gsi1 = campaignTable.index(PaylinkerCampaign.INDEX_GSI1);
+        DynamoDbIndex<PaylinkerCampaign> gsi1 = getCampaignTable().index(PaylinkerCampaign.INDEX_GSI1);
 
         // 파티션 키: 해당 Admin의 데이터만 탐색
         QueryConditional queryConditional = QueryConditional.keyEqualTo(k ->
@@ -92,38 +96,27 @@ public class CampaignRepository {
 
     // 트랜잭션을 이용한 3개 테이블 동시 저장
     public void saveCampaignWithTransaction(PaylinkerCampaign campaign, PaylinkerCampaignLimit limit, PaylinkerAuditLog auditLog) {
-        // 테이블 객체를 메서드 내부에서 동적 생성
-        DynamoDbTable<PaylinkerCampaign> campaignTable = enhancedClient.table("paylinker_campaign", TableSchema.fromBean(PaylinkerCampaign.class));
-        DynamoDbTable<PaylinkerCampaignLimit> limitTable = enhancedClient.table("paylinker_campaign_limit", TableSchema.fromBean(PaylinkerCampaignLimit.class));
-        DynamoDbTable<PaylinkerAuditLog> auditLogTable = enhancedClient.table("paylinker_audit_log", TableSchema.fromBean(PaylinkerAuditLog.class));
-
         TransactWriteItemsEnhancedRequest request = TransactWriteItemsEnhancedRequest.builder()
-                .addPutItem(campaignTable, campaign)
-                .addPutItem(limitTable, limit)
-                .addPutItem(auditLogTable, auditLog)
+                .addPutItem(getCampaignTable(), campaign)
+                .addPutItem(getLimitTable(), limit)
+                .addPutItem(getAuditLogTable(), auditLog)
                 .build();
 
-        enhancedClient.transactWriteItems(request);
+        executeTransaction(request);
     }
 
     // 캠페인 단건 조회 (PK 기준)
-    public PaylinkerCampaign findById(String campaignId) {
-        return campaignTable.getItem(r -> r.key(k -> k.partitionValue(PaylinkerCampaign.pk(campaignId)).sortValue(PaylinkerCampaign.sk())));
+    public PaylinkerCampaign findCampaignById(String campaignId) {
+        return getCampaignTable().getItem(r -> r.key(k -> k.partitionValue(PaylinkerCampaign.pk(campaignId)).sortValue(PaylinkerCampaign.sk())));
     }
 
     // 캠페인 제한 단건 조회 (PK 기준)
     public PaylinkerCampaignLimit findLimitById(String campaignId) {
-        return limitTable.getItem(r -> r.key(k -> k.partitionValue(PaylinkerCampaignLimit.pk(campaignId)).sortValue(PaylinkerCampaignLimit.SK_LIMIT)));
+        return getLimitTable().getItem(r -> r.key(k -> k.partitionValue(PaylinkerCampaignLimit.pk(campaignId)).sortValue(PaylinkerCampaignLimit.SK_LIMIT)));
     }
 
-    // 캠페인 수정 트랜잭션 (AuditLog 포함)
-    public void updateCampaignWithTransaction(PaylinkerCampaign campaign, PaylinkerCampaignLimit limit, PaylinkerAuditLog auditLog) {
-        TransactWriteItemsEnhancedRequest request = TransactWriteItemsEnhancedRequest.builder()
-                .addUpdateItem(campaignTable, campaign)
-                .addUpdateItem(limitTable, limit)
-                .addPutItem(auditLogTable, auditLog)
-                .build();
-
+    // 캠페인 생성, 수정, 삭제에서 공통으로 사용하는 트랜잭션 메서드
+    public void executeTransaction(TransactWriteItemsEnhancedRequest request) {
         enhancedClient.transactWriteItems(request);
     }
 }
