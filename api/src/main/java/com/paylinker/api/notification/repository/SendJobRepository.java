@@ -9,6 +9,8 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.Put;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
+import software.amazon.awssdk.services.dynamodb.model.Update;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 @Repository
 @RequiredArgsConstructor
@@ -35,6 +37,20 @@ public class SendJobRepository {
                         "secure_link_id", AttributeValue.fromS(secureLinkId),
                         "status", AttributeValue.fromS("QUEUED"),
                         "created_at", AttributeValue.fromS(createdAt)))
+                .build());
+    }
+
+    /**
+     * SQS 큐잉 실패 시 sendJob을 FAILED 상태로 마킹하여 orphan 방지.
+     * 별도 트랜잭션 없이 단독 업데이트로 처리.
+     */
+    public void updateToFailed(String sendJobId) {
+        dynamoDbClient.updateItem(UpdateItemRequest.builder()
+                .tableName(tableName())
+                .key(Map.of("send_job_id", AttributeValue.fromS(sendJobId)))
+                .updateExpression("SET #s = :failed")
+                .expressionAttributeNames(Map.of("#s", "status"))
+                .expressionAttributeValues(Map.of(":failed", AttributeValue.fromS("FAILED")))
                 .build());
     }
 
