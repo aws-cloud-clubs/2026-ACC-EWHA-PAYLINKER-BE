@@ -1,14 +1,17 @@
 package com.paylinker.api.campaign.controller;
 
 import com.paylinker.api.campaign.dto.request.CampaignCreateRequest;
+import com.paylinker.api.campaign.dto.request.CampaignUpdateRequest;
 import com.paylinker.api.campaign.dto.response.CampaignCreateResponse;
+import com.paylinker.api.campaign.dto.response.CampaignDetailResponse;
+import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.dto.request.ManualResendRequest;
 import com.paylinker.api.campaign.dto.request.ReminderRequest;
-import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.campaign.dto.response.ManualResendResponse;
 import com.paylinker.api.campaign.dto.response.ReminderResponse;
 import com.paylinker.api.campaign.service.CampaignService;
+import com.paylinker.api.campaign.service.CampaignUpdateService;
 import com.paylinker.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,6 +37,7 @@ public class CampaignController {
 
     private final CampaignService campaignService;
     private final CampaignCreateService campaignCreateService;
+    private final CampaignUpdateService campaignUpdateService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<CampaignListResponse>> getCampaigns(
@@ -62,6 +66,18 @@ public class CampaignController {
         CampaignCreateResponse responseData = campaignCreateService.createCampaign(adminId, request);
 
         return ResponseEntity.status(201).body(ApiResponse.created("캠페인 생성 완료", responseData));
+    }
+
+    @PatchMapping("/{campaignId}")
+    public ResponseEntity<ApiResponse<CampaignDetailResponse>> updateCampaign(
+            @PathVariable String campaignId,
+            @Valid @RequestBody CampaignUpdateRequest request,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignDetailResponse responseData = campaignUpdateService.updateCampaign(adminId, campaignId, request);
+
+        return ResponseEntity.ok(ApiResponse.ok("캠페인 수정 완료", responseData));
     }
 
     @PostMapping("/{campaignId}/reminders")
