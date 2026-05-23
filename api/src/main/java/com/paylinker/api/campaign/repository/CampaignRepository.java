@@ -46,16 +46,6 @@ public class CampaignRepository {
                 .anyMatch(c -> c.getCampaignName() != null && c.getCampaignName().equals(campaignName));
     }
 
-    // 트랜잭션을 이용한 3개 테이블 동시 저장
-    public void saveCampaignWithTransaction(PaylinkerCampaign campaign, PaylinkerCampaignLimit limit, PaylinkerAuditLog auditLog) {
-        TransactWriteItemsEnhancedRequest request = TransactWriteItemsEnhancedRequest.builder()
-                .addPutItem(campaignTable, campaign)
-                .addPutItem(limitTable, limit)
-                .addPutItem(auditLogTable, auditLog)
-                .build();
-
-        enhancedClient.transactWriteItems(request);
-    }
 
     // 캠페인 단건 조회 (PK 기준)
     public PaylinkerCampaign findById(String campaignId) {
@@ -67,14 +57,16 @@ public class CampaignRepository {
         return limitTable.getItem(r -> r.key(k -> k.partitionValue(PaylinkerCampaignLimit.pk(campaignId)).sortValue(PaylinkerCampaignLimit.SK_LIMIT)));
     }
 
-    // 캠페인 수정 트랜잭션 (AuditLog 포함)
-    public void updateCampaignWithTransaction(PaylinkerCampaign campaign, PaylinkerCampaignLimit limit, PaylinkerAuditLog auditLog) {
-        TransactWriteItemsEnhancedRequest request = TransactWriteItemsEnhancedRequest.builder()
-                .addUpdateItem(campaignTable, campaign)
-                .addUpdateItem(limitTable, limit)
-                .addPutItem(auditLogTable, auditLog)
-                .build();
-
+    //캠페인 생성, 수정, 삭제에서 공통으로 사용하는 트랜잭션 메서드
+    public void executeTransaction(TransactWriteItemsEnhancedRequest request) {
         enhancedClient.transactWriteItems(request);
+    }
+
+    // Service에서 테이블에 접근해야 하므로 Getter 세팅
+    public DynamoDbTable<PaylinkerCampaign> getCampaignTable() { return campaignTable; }
+    public DynamoDbTable<PaylinkerCampaignLimit> getLimitTable() { return limitTable; }
+    public DynamoDbTable<PaylinkerAuditLog> getAuditLogTable() { return auditLogTable; }
+
+    public void saveCampaignWithTransaction(PaylinkerCampaign campaign, PaylinkerCampaignLimit limit, PaylinkerAuditLog auditLog) {
     }
 }
