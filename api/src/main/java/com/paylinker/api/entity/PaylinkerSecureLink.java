@@ -12,7 +12,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortK
 @DynamoDbBean
 public class PaylinkerSecureLink {
 
-    public static final String INDEX_GSI1 = "gsi1";
+    public static final String INDEX_GSI1 = "GSI1";
     public static final String SK_METADATA = "METADATA";
 
     private String pk;
