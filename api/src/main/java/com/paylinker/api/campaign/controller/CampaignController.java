@@ -93,12 +93,12 @@ public class CampaignController {
 
         return ResponseEntity.ok(ApiResponse.ok("캠페인 취소 완료", responseData));
     }
-
+    
     @PostMapping("/{campaignId}/reminders")
     @Operation(
             summary = "미확인 수신자 리마인드 발송 (SND-001)",
             description = "미확인 수신자(전체 또는 선택)에게 리마인드 메일 발송을 요청한다. " +
-                    "캠페인 status는 SENT 또는 PARTIAL_FAILED이어야 단다.")
+                    "캠페인 status는 SENT 또는 PARTIAL_FAILED이어야 한다.")
     public ResponseEntity<ApiResponse<ReminderResponse>> sendReminder(
             @Parameter(description = "캠페인 ID (UUID)", required = true)
             @PathVariable String campaignId,
