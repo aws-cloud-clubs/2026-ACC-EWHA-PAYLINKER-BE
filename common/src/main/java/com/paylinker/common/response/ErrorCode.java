@@ -32,6 +32,7 @@ public enum ErrorCode {
     CAMPAIGN_INVALID_INPUT(400, "캠페인 입력값이 유효하지 않습니다."),
     CAMPAIGN_NAME_DUPLICATE(409, "동일한 캠페인명이 이미 존재합니다."),
     CAMPAIGN_LOCKED(422, "발송 시작된 이후에는 수정할 수 없습니다."),
+    CAMPAIGN_CANNOT_CANCEL(409, "발송이 시작되었거나 이미 종료된 캠페인은 취소할 수 없습니다."),
     ;
 
     private final int httpStatus;
