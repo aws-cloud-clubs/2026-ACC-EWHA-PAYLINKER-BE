@@ -10,6 +10,7 @@ import com.paylinker.api.campaign.repository.CampaignRepository;
 import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.enhanced.dynamodb.model.TransactWriteItemsEnhancedRequest;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -27,8 +28,8 @@ public class CampaignUpdateService {
     }
 
     public CampaignDetailResponse updateCampaign(String adminId, String campaignId, CampaignUpdateRequest request) {
-        // 1. 기존 데이터 조회
-        PaylinkerCampaign campaign = campaignRepository.findById(campaignId);
+        // 1. 기존 데이터 조회 (팀원분 findById가 아닌, 엔티티를 반환하는 findCampaignById 사용)
+        PaylinkerCampaign campaign = campaignRepository.findCampaignById(campaignId);
         if (campaign == null || !campaign.getAdminId().equals(adminId)) {
             throw new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND);
         }
@@ -85,8 +86,14 @@ public class CampaignUpdateService {
         auditLog.setGsi2Pk(PaylinkerAuditLog.gsi2Pk(campaignId));
         auditLog.setGsi2Sk(createdAt);
 
-        // 6. DB 트랜잭션 업데이트
-        campaignRepository.saveCampaignWithTransaction(campaign, limit, auditLog);
+        // 6. DB 트랜잭션 업데이트 - Service에서 조립 후 실행
+        TransactWriteItemsEnhancedRequest transactionRequest = TransactWriteItemsEnhancedRequest.builder()
+                .addUpdateItem(campaignRepository.getCampaignTable(), campaign)
+                .addUpdateItem(campaignRepository.getLimitTable(), limit)
+                .addPutItem(campaignRepository.getAuditLogTable(), auditLog)
+                .build();
+
+        campaignRepository.executeTransaction(transactionRequest);
 
         // 7. 응답 반환 (상세 정보)
         return new CampaignDetailResponse(
