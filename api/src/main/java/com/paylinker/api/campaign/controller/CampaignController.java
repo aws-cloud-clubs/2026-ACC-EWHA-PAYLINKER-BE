@@ -2,21 +2,24 @@ package com.paylinker.api.campaign.controller;
 
 import com.paylinker.api.campaign.dto.request.CampaignCreateRequest;
 import com.paylinker.api.campaign.dto.request.CampaignUpdateRequest;
+import com.paylinker.api.campaign.dto.request.CampaignScheduleRequest;
+import com.paylinker.api.campaign.dto.request.ManualResendRequest;
+import com.paylinker.api.campaign.dto.request.ReminderRequest;
 import com.paylinker.api.campaign.dto.response.CampaignCancelResponse;
 import com.paylinker.api.campaign.dto.response.CampaignCreateResponse;
 import com.paylinker.api.campaign.dto.response.CampaignDetailResponse;
-import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.campaign.dto.response.CampaignFinalReviewResponse;
-import com.paylinker.api.campaign.service.CampaignCancelService;
-import com.paylinker.api.campaign.service.CampaignCreateService;
-import com.paylinker.api.campaign.dto.request.ManualResendRequest;
-import com.paylinker.api.campaign.dto.request.ReminderRequest;
+import com.paylinker.api.campaign.dto.response.CampaignListResponse;
+import com.paylinker.api.campaign.dto.response.CampaignScheduleResponse;
 import com.paylinker.api.campaign.dto.response.ManualResendResponse;
 import com.paylinker.api.campaign.dto.response.ReminderResponse;
-import com.paylinker.api.campaign.service.CampaignService;
-import com.paylinker.api.campaign.service.CampaignUpdateService;
+import com.paylinker.api.campaign.service.CampaignCancelService;
+import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.service.CampaignDetailService;
 import com.paylinker.api.campaign.service.CampaignFinalReviewService;
+import com.paylinker.api.campaign.service.CampaignScheduleService;
+import com.paylinker.api.campaign.service.CampaignService;
+import com.paylinker.api.campaign.service.CampaignUpdateService;
 import com.paylinker.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -46,6 +49,7 @@ public class CampaignController {
     private final CampaignCancelService campaignCancelService;
     private final CampaignDetailService campaignDetailService;
     private final CampaignFinalReviewService campaignFinalReviewService;
+    private final CampaignScheduleService campaignScheduleService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<CampaignListResponse>> getCampaigns(
@@ -119,6 +123,19 @@ public class CampaignController {
         CampaignFinalReviewResponse responseData = campaignFinalReviewService.getFinalReviewInfo(adminId, campaignId);
 
         return ResponseEntity.ok(ApiResponse.ok("발송 전 최종 확인 정보 조회 성공", responseData));
+    }
+
+    @PatchMapping("/{campaignId}/schedule")
+    public ResponseEntity<ApiResponse<CampaignScheduleResponse>> scheduleCampaign(
+            @PathVariable String campaignId,
+            @RequestBody CampaignScheduleRequest request,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignScheduleResponse responseData = campaignScheduleService.scheduleCampaign(adminId, campaignId, request);
+
+        String msg = request.scheduledSendAt() != null ? "예약 발송 설정 완료" : "예약 발송 해제 완료";
+        return ResponseEntity.ok(ApiResponse.ok(msg, responseData));
     }
 
     @PostMapping("/{campaignId}/reminders")
