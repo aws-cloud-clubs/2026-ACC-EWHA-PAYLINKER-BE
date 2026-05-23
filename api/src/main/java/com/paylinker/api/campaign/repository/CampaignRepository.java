@@ -41,7 +41,7 @@ public class CampaignRepository {
                 .build());
         return resp.hasItem() ? Optional.of(resp.item()) : Optional.empty();
     }
-    
+
     private final DynamoDbEnhancedClient enhancedClient;
 
     // 테이블 객체를 메서드 내부에서 동적으로 가져오는 Getter 메서드들
