@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,9 +31,12 @@ public class CampaignRecipientController {
             @Parameter(description = "캠페인 식별자 (UUID)", required = true)
             @PathVariable String campaignId,
             @Parameter(description = "업로드 배치 식별자", required = true)
-            @PathVariable String uploadBatchId) {
+            @PathVariable String uploadBatchId,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        RecipientValidationResponse data = recipientValidationService.getValidationResult(campaignId, uploadBatchId);
+        String adminId = jwt.getSubject();
+        RecipientValidationResponse data =
+                recipientValidationService.getValidationResult(campaignId, uploadBatchId, adminId);
         return ResponseEntity.ok(ApiResponse.ok("수신자 검증 결과 조회 성공", data));
     }
 }
