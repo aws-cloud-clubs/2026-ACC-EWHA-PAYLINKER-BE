@@ -1,4 +1,4 @@
-package com.paylinker.api.repository;
+package com.paylinker.api.campaign.repository;
 
 import com.paylinker.api.entity.PaylinkerCampaign;
 import org.springframework.stereotype.Repository;
