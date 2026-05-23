@@ -10,6 +10,7 @@ import com.paylinker.api.campaign.repository.CampaignRepository;
 import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.enhanced.dynamodb.model.TransactWriteItemsEnhancedRequest;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -105,8 +106,14 @@ public class CampaignCreateService {
         auditLog.setGsi2Pk(PaylinkerAuditLog.gsi2Pk(campaignId));
         auditLog.setGsi2Sk(createdAt);
 
-        // 6. DB 트랜잭션 저장
-        campaignRepository.saveCampaignWithTransaction(campaign, limit, auditLog);
+        // 6. DB 트랜잭션 저장 - Service에서 조립 후 실행
+        TransactWriteItemsEnhancedRequest transactionRequest = TransactWriteItemsEnhancedRequest.builder()
+                .addPutItem(campaignRepository.getCampaignTable(), campaign)
+                .addPutItem(campaignRepository.getLimitTable(), limit)
+                .addPutItem(campaignRepository.getAuditLogTable(), auditLog)
+                .build();
+
+        campaignRepository.executeTransaction(transactionRequest);
 
         // 7. 응답 반환
         return new CampaignCreateResponse(campaignId, campaign.getCampaignName(), campaign.getStatus().name(), createdAt);
