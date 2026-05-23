@@ -2,9 +2,11 @@ package com.paylinker.api.campaign.controller;
 
 import com.paylinker.api.campaign.dto.request.CampaignCreateRequest;
 import com.paylinker.api.campaign.dto.request.CampaignUpdateRequest;
+import com.paylinker.api.campaign.dto.response.CampaignCancelResponse;
 import com.paylinker.api.campaign.dto.response.CampaignCreateResponse;
 import com.paylinker.api.campaign.dto.response.CampaignDetailResponse;
 import com.paylinker.api.campaign.dto.response.CampaignListResponse;
+import com.paylinker.api.campaign.service.CampaignCancelService;
 import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.service.CampaignService;
 import com.paylinker.api.campaign.service.CampaignUpdateService;
@@ -25,11 +27,13 @@ public class CampaignController {
     private final CampaignService campaignService;
     private final CampaignCreateService campaignCreateService;
     private final CampaignUpdateService campaignUpdateService;
+    private final CampaignCancelService campaignCancelService;
 
-    public CampaignController(CampaignService campaignService, CampaignCreateService campaignCreateService, CampaignUpdateService campaignUpdateService) {
+    public CampaignController(CampaignService campaignService, CampaignCreateService campaignCreateService, CampaignUpdateService campaignUpdateService, CampaignCancelService campaignCancelService1) {
         this.campaignService = campaignService;
         this.campaignCreateService = campaignCreateService;
         this.campaignUpdateService = campaignUpdateService;
+        this.campaignCancelService = campaignCancelService1;
     }
 
     @GetMapping
@@ -71,5 +75,16 @@ public class CampaignController {
         CampaignDetailResponse responseData = campaignUpdateService.updateCampaign(adminId, campaignId, request);
 
         return ResponseEntity.ok(ApiResponse.ok("캠페인 수정 완료", responseData));
+    }
+
+    @PatchMapping("/{campaignId}/cancel")
+    public ResponseEntity<ApiResponse<CampaignCancelResponse>> cancelCampaign(
+            @PathVariable String campaignId,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignCancelResponse responseData = campaignCancelService.cancelCampaign(adminId, campaignId);
+
+        return ResponseEntity.ok(ApiResponse.ok("캠페인 취소 완료", responseData));
     }
 }
