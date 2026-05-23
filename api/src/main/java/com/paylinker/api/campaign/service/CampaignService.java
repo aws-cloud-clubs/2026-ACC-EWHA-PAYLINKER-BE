@@ -44,7 +44,7 @@ public class CampaignService {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final DateTimeFormatter ISO_OFFSET = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
-    private static final Set<String> ALLOWED_CAMPAIGN_STATUSES = Set.of("SENT", "PARTIAL_FAILED");
+    private static final Set<String> ALLOWED_STATUSES = Set.of("SENT", "PARTIAL_FAILED");
     private static final List<String> DEFAULT_PERMANENT_FAILURE_REASONS =
             List.of("INVALID_EMAIL", "BLOCKED", "COMPLAINT");
 
@@ -60,27 +60,28 @@ public class CampaignService {
     @Value("${aws.sqs.email-queue-url}")
     private String sqsQueueUrl;
 
-    // SND-001
-    public ReminderResponse sendReminder(String campaignId, ReminderRequest request) {
-        validateCampaignStatus(campaignId, ErrorCode.REMINDER_NOT_ALLOWED);
+    // ────────────────────────────────────────────────
+    // SND-001: 미확인 수신자 리마인드 발송
+    // ────────────────────────────────────────────────
 
-        if ("SELECTED".equals(request.getTarget()) &&
-                (request.getCampaignRecipientIds() == null || request.getCampaignRecipientIds().isEmpty())) {
-            throw new CustomException(ErrorCode.REMINDER_SELECTED_REQUIRED);
-        }
+    public ReminderResponse sendReminder(String campaignId, ReminderRequest request, String requesterId) {
+        validateCampaignAccess(campaignId, requesterId, ErrorCode.REMINDER_NOT_ALLOWED);
+        validateSelectedIds(request.getTarget(), request.getCampaignRecipientIds(),
+                ErrorCode.REMINDER_SELECTED_REQUIRED);
 
         List<Map<String, AttributeValue>> candidates = resolveUnviewedCandidates(campaignId, request);
         if (candidates.isEmpty()) {
             throw new CustomException(ErrorCode.REMINDER_NO_TARGET);
         }
 
-        String requestedAt = ZonedDateTime.now(KST).format(ISO_OFFSET);
+        String requestedAt = now();
         int queuedCount = 0;
         int skippedExpiredCount = 0;
 
         for (Map<String, AttributeValue> recipient : candidates) {
             String recipientId = str(recipient, "campaign_recipient_id");
-            Optional<Map<String, AttributeValue>> link = secureLinkRepository.findActiveByRecipientId(recipientId);
+            Optional<Map<String, AttributeValue>> link =
+                    secureLinkRepository.findActiveByRecipientId(recipientId);
 
             // 링크가 없거나 만료된 수신자는 제외
             if (link.isEmpty() || isLinkExpired(str(link.get(), "expires_at"), requestedAt)) {
@@ -89,28 +90,19 @@ public class CampaignService {
             }
 
             String secureLinkId = str(link.get(), "secure_link_id");
-            String sendJobId = "sj_" + UUID.randomUUID().toString().replace("-", "");
+            String sendJobId = newId("sj");
+            persistReminderJob(sendJobId, recipientId, campaignId, secureLinkId, requestedAt);
 
-            List<TransactWriteItem> txItems = List.of(
-                    sendJobRepository.saveTxItem(sendJobId, recipientId, campaignId, "REMINDER", secureLinkId, requestedAt),
-                    campaignRecipientRepository.incrementReminderCountTxItem(recipientId, requestedAt));
-
-            dynamoDbClient.transactWriteItems(TransactWriteItemsRequest.builder()
-                    .transactItems(txItems)
-                    .build());
-
-            // 리마인드는 기존 링크 재사용: secureLinkId를 워커에 전달
-            enqueueReminderJob(sendJobId, secureLinkId);
-            queuedCount++;
+            if (tryEnqueueReminderJob(sendJobId, secureLinkId)) {
+                queuedCount++;
+            }
         }
 
-        if (queuedCount == 0 && skippedExpiredCount > 0) {
+        if (queuedCount == 0) {
             throw new CustomException(ErrorCode.REMINDER_NO_TARGET);
         }
 
-        auditLogRepository.save(
-                "al_" + UUID.randomUUID().toString().replace("-", ""),
-                campaignId, "REMINDER_REQUEST", requestedAt);
+        saveAuditLog(campaignId, "REMINDER_REQUEST", requestedAt);
 
         return ReminderResponse.builder()
                 .campaignId(campaignId)
@@ -120,14 +112,14 @@ public class CampaignService {
                 .build();
     }
 
-    // SND-002
-    public ManualResendResponse manualResend(String campaignId, ManualResendRequest request) {
-        validateCampaignStatus(campaignId, ErrorCode.MANUAL_RESEND_NOT_ALLOWED);
+    // ────────────────────────────────────────────────
+    // SND-002: 실패 대상자 수동 재발송
+    // ────────────────────────────────────────────────
 
-        if ("SELECTED".equals(request.getTarget()) &&
-                (request.getCampaignRecipientIds() == null || request.getCampaignRecipientIds().isEmpty())) {
-            throw new CustomException(ErrorCode.MANUAL_RESEND_SELECTED_REQUIRED);
-        }
+    public ManualResendResponse manualResend(String campaignId, ManualResendRequest request, String requesterId) {
+        validateCampaignAccess(campaignId, requesterId, ErrorCode.MANUAL_RESEND_NOT_ALLOWED);
+        validateSelectedIds(request.getTarget(), request.getCampaignRecipientIds(),
+                ErrorCode.MANUAL_RESEND_SELECTED_REQUIRED);
 
         List<String> excludeReasons = request.getExcludeFailureReasons() != null
                 ? request.getExcludeFailureReasons()
@@ -138,51 +130,31 @@ public class CampaignService {
             throw new CustomException(ErrorCode.MANUAL_RESEND_NO_TARGET);
         }
 
-        String requestedAt = ZonedDateTime.now(KST).format(ISO_OFFSET);
+        String requestedAt = now();
         int queuedCount = 0;
         int skippedPermanentFailureCount = 0;
 
         for (Map<String, AttributeValue> recipient : candidates) {
-            String failureReason = str(recipient, "send_failure_reason");
-
-            // 영구 실패 수신자는 자동 제외
-            if (failureReason != null && excludeReasons.contains(failureReason)) {
+            // 영구 실패 수신자 자동 제외
+            if (isPermanentFailure(recipient, excludeReasons)) {
                 skippedPermanentFailureCount++;
                 continue;
             }
 
             String recipientId = str(recipient, "campaign_recipient_id");
             String plainToken = UUID.randomUUID().toString().replace("-", "");
-            String tokenHash = sha256(plainToken);
-            String secureLinkId = "sl_" + UUID.randomUUID().toString().replace("-", "");
-            String newLinkExpiresAt = ZonedDateTime.now(KST).plusDays(2).format(ISO_OFFSET);
-            String sendJobId = "sj_" + UUID.randomUUID().toString().replace("-", "");
+            String sendJobId = persistResendJob(recipientId, campaignId, plainToken, requestedAt);
 
-            Optional<Map<String, AttributeValue>> existingLink =
-                    secureLinkRepository.findActiveByRecipientId(recipientId);
-
-            List<TransactWriteItem> txItems = new ArrayList<>();
-            existingLink.ifPresent(link ->
-                    txItems.add(secureLinkRepository.invalidateTxItem(str(link, "secure_link_id"))));
-            txItems.add(secureLinkRepository.saveTxItem(secureLinkId, recipientId, campaignId, tokenHash, newLinkExpiresAt));
-            txItems.add(sendJobRepository.saveTxItem(sendJobId, recipientId, campaignId, "RESEND", secureLinkId, requestedAt));
-            txItems.add(campaignRecipientRepository.updateToRetryingTxItem(recipientId));
-
-            dynamoDbClient.transactWriteItems(TransactWriteItemsRequest.builder()
-                    .transactItems(txItems)
-                    .build());
-
-            enqueueResendJob(sendJobId, plainToken);
-            queuedCount++;
+            if (tryEnqueueResendJob(sendJobId, plainToken)) {
+                queuedCount++;
+            }
         }
 
-        if (queuedCount == 0 && skippedPermanentFailureCount > 0) {
+        if (queuedCount == 0) {
             throw new CustomException(ErrorCode.MANUAL_RESEND_NO_TARGET);
         }
 
-        auditLogRepository.save(
-                "al_" + UUID.randomUUID().toString().replace("-", ""),
-                campaignId, "MANUAL_RESEND", requestedAt);
+        saveAuditLog(campaignId, "MANUAL_RESEND", requestedAt);
 
         return ManualResendResponse.builder()
                 .campaignId(campaignId)
@@ -192,25 +164,47 @@ public class CampaignService {
                 .build();
     }
 
-    private void validateCampaignStatus(String campaignId, ErrorCode notAllowedCode) {
+    // ────────────────────────────────────────────────
+    // 검증
+    // ────────────────────────────────────────────────
+
+    /** 캠페인 존재 여부 + 소유자 검증 + 상태 검증을 한 번에 처리 */
+    private void validateCampaignAccess(String campaignId, String requesterId, ErrorCode statusCode) {
         Map<String, AttributeValue> campaign = campaignRepository.findById(campaignId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND));
-        if (!ALLOWED_CAMPAIGN_STATUSES.contains(str(campaign, "status"))) {
-            throw new CustomException(notAllowedCode);
+
+        // 소유자 검증: campaign의 owner_id와 JWT sub 비교
+        String ownerId = str(campaign, "owner_id");
+        if (ownerId != null && !ownerId.equals(requesterId)) {
+            throw new CustomException(ErrorCode.CAMPAIGN_FORBIDDEN);
+        }
+
+        if (!ALLOWED_STATUSES.contains(str(campaign, "status"))) {
+            throw new CustomException(statusCode);
         }
     }
+
+    private void validateSelectedIds(String target, List<String> ids, ErrorCode code) {
+        if ("SELECTED".equals(target) && (ids == null || ids.isEmpty())) {
+            throw new CustomException(code);
+        }
+    }
+
+    // ────────────────────────────────────────────────
+    // 대상 수신자 결정
+    // ────────────────────────────────────────────────
 
     private List<Map<String, AttributeValue>> resolveUnviewedCandidates(
             String campaignId, ReminderRequest request) {
         if ("ALL_UNVIEWED".equals(request.getTarget())) {
             return campaignRecipientRepository.findUnviewedByCampaignId(campaignId);
         }
-        // SELECTED: 지정된 수신자 중 미열람자만
+        // SELECTED: 지정 수신자 중 미열람만
         return request.getCampaignRecipientIds().stream()
                 .map(campaignRecipientRepository::findById)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .filter(r -> "0".equals(str(r, "viewed")) || r.get("viewed") == null)
+                .filter(this::isUnviewed)
                 .toList();
     }
 
@@ -219,7 +213,7 @@ public class CampaignService {
         if ("ALL_FAILED".equals(request.getTarget())) {
             return campaignRecipientRepository.findFailedByCampaignId(campaignId);
         }
-        // SELECTED: 지정된 수신자 중 실패 상태만
+        // SELECTED: 지정 수신자 중 FAILED 상태만
         return request.getCampaignRecipientIds().stream()
                 .map(campaignRecipientRepository::findById)
                 .filter(Optional::isPresent)
@@ -228,39 +222,119 @@ public class CampaignService {
                 .toList();
     }
 
+    // ────────────────────────────────────────────────
+    // DB 쓰기
+    // ────────────────────────────────────────────────
+
+    /** 리마인드: sendJob 저장 + reminder_count 증가 원자적 처리 */
+    private void persistReminderJob(String sendJobId, String recipientId,
+                                    String campaignId, String secureLinkId, String requestedAt) {
+        List<TransactWriteItem> txItems = List.of(
+                sendJobRepository.saveTxItem(sendJobId, recipientId, campaignId, "REMINDER", secureLinkId, requestedAt),
+                campaignRecipientRepository.incrementReminderCountTxItem(recipientId, requestedAt));
+        dynamoDbClient.transactWriteItems(
+                TransactWriteItemsRequest.builder().transactItems(txItems).build());
+    }
+
+    /** 재발송: 기존 링크 무효화 + 신규 링크 발급 + sendJob 저장 + 수신자 상태 갱신 원자적 처리 */
+    private String persistResendJob(String recipientId, String campaignId,
+                                    String plainToken, String requestedAt) {
+        String secureLinkId = newId("sl");
+        String sendJobId = newId("sj");
+        String newLinkExpiresAt = ZonedDateTime.now(KST).plusDays(2).format(ISO_OFFSET);
+
+        Optional<Map<String, AttributeValue>> existingLink =
+                secureLinkRepository.findActiveByRecipientId(recipientId);
+
+        List<TransactWriteItem> txItems = new ArrayList<>();
+        existingLink.ifPresent(link ->
+                txItems.add(secureLinkRepository.invalidateTxItem(str(link, "secure_link_id"))));
+        txItems.add(secureLinkRepository.saveTxItem(
+                secureLinkId, recipientId, campaignId, sha256(plainToken), newLinkExpiresAt));
+        txItems.add(sendJobRepository.saveTxItem(
+                sendJobId, recipientId, campaignId, "RESEND", secureLinkId, requestedAt));
+        txItems.add(campaignRecipientRepository.updateToRetryingTxItem(recipientId));
+
+        dynamoDbClient.transactWriteItems(
+                TransactWriteItemsRequest.builder().transactItems(txItems).build());
+        return sendJobId;
+    }
+
+    private void saveAuditLog(String campaignId, String actionType, String requestedAt) {
+        auditLogRepository.save(newId("al"), campaignId, actionType, requestedAt);
+    }
+
+    // ────────────────────────────────────────────────
+    // SQS 큐잉 — 실패 시 sendJob FAILED 마킹(orphan 방지)
+    // ────────────────────────────────────────────────
+
+    /** 리마인드: 기존 링크 재사용이므로 secureLinkId를 워커에 전달 */
+    private boolean tryEnqueueReminderJob(String sendJobId, String secureLinkId) {
+        try {
+            String body = objectMapper.writeValueAsString(
+                    Map.of("sendJobId", sendJobId, "secureLinkId", secureLinkId));
+            enqueue(body);
+            return true;
+        } catch (Exception e) {
+            log.error("SQS 큐잉 실패(REMINDER), sendJob FAILED 처리: sendJobId={}", sendJobId, e);
+            sendJobRepository.updateToFailed(sendJobId);
+            return false;
+        }
+    }
+
+    /** 재발송: 신규 링크의 plainToken을 워커에 전달해 URL 생성 */
+    private boolean tryEnqueueResendJob(String sendJobId, String plainToken) {
+        try {
+            String body = objectMapper.writeValueAsString(
+                    Map.of("sendJobId", sendJobId, "plainToken", plainToken));
+            enqueue(body);
+            return true;
+        } catch (Exception e) {
+            log.error("SQS 큐잉 실패(RESEND), sendJob FAILED 처리: sendJobId={}", sendJobId, e);
+            sendJobRepository.updateToFailed(sendJobId);
+            return false;
+        }
+    }
+
+    private void enqueue(String messageBody) throws JsonProcessingException {
+        sqsClient.sendMessage(SendMessageRequest.builder()
+                .queueUrl(sqsQueueUrl)
+                .messageBody(messageBody)
+                .build());
+    }
+
+    // ────────────────────────────────────────────────
+    // 유틸
+    // ────────────────────────────────────────────────
+
     private boolean isLinkExpired(String expiresAt, String now) {
-        if (expiresAt == null) return true;
-        return expiresAt.compareTo(now) <= 0;
+        return expiresAt == null || expiresAt.compareTo(now) <= 0;
     }
 
-    private void enqueueReminderJob(String sendJobId, String secureLinkId) {
-        try {
-            String body = objectMapper.writeValueAsString(Map.of(
-                    "sendJobId", sendJobId,
-                    "secureLinkId", secureLinkId));
-            sqsClient.sendMessage(SendMessageRequest.builder()
-                    .queueUrl(sqsQueueUrl)
-                    .messageBody(body)
-                    .build());
-        } catch (JsonProcessingException e) {
-            log.error("SQS 메시지 직렬화 실패: sendJobId={}", sendJobId, e);
-            throw new RuntimeException("SQS 메시지 직렬화 실패", e);
-        }
+    /**
+     * viewed 필드는 N 타입(0=미열람, 1=열람) 기준.
+     * BOOL·S 타입 혼재 환경을 위해 폴백 처리 포함.
+     */
+    private boolean isUnviewed(Map<String, AttributeValue> recipient) {
+        AttributeValue viewed = recipient.get("viewed");
+        if (viewed == null) return true;
+        if (viewed.n() != null) return "0".equals(viewed.n());
+        if (viewed.bool() != null) return !viewed.bool();
+        return "0".equals(viewed.s()) || "false".equalsIgnoreCase(viewed.s());
     }
 
-    private void enqueueResendJob(String sendJobId, String plainToken) {
-        try {
-            String body = objectMapper.writeValueAsString(Map.of(
-                    "sendJobId", sendJobId,
-                    "plainToken", plainToken));
-            sqsClient.sendMessage(SendMessageRequest.builder()
-                    .queueUrl(sqsQueueUrl)
-                    .messageBody(body)
-                    .build());
-        } catch (JsonProcessingException e) {
-            log.error("SQS 메시지 직렬화 실패: sendJobId={}", sendJobId, e);
-            throw new RuntimeException("SQS 메시지 직렬화 실패", e);
-        }
+    private boolean isPermanentFailure(Map<String, AttributeValue> recipient,
+                                       List<String> excludeReasons) {
+        String reason = str(recipient, "send_failure_reason");
+        return reason != null && excludeReasons.contains(reason);
+    }
+
+    private String now() {
+        return ZonedDateTime.now(KST).format(ISO_OFFSET);
+    }
+
+    private String newId(String prefix) {
+        return prefix + "_" + UUID.randomUUID().toString().replace("-", "");
     }
 
     private String sha256(String input) {
