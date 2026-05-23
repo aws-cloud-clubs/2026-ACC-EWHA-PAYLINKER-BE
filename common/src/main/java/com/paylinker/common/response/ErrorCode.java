@@ -10,6 +10,7 @@ public enum ErrorCode {
     CAMPAIGN_CANNOT_SEND(422, "발송 조건을 만족하지 못합니다."),
     CAMPAIGN_INVALID_INPUT(400, "캠페인 입력값이 유효하지 않습니다."),
     CAMPAIGN_NAME_DUPLICATE(409, "동일한 캠페인명이 이미 존재합니다."),
+    CAMPAIGN_LOCKED(422, "발송 시작된 이후에는 수정할 수 없습니다."), // feat/#39 추가
 
     LINK_EXPIRED(401, "보안 링크가 만료되었습니다."),
     LINK_REUSED(401, "이미 사용된 일회용 링크입니다."),
