@@ -24,7 +24,7 @@ public class UploadBatchRepository {
 
     public void save(String uploadBatchId, String campaignId,
                      int totalRowCount, int validRowCount, int errorRowCount, int duplicateRowCount,
-                     String uploadType, String s3Key) {
+                     String uploadType, String fileS3Key, String validationErrorsS3Key) {
         dynamoDbClient.putItem(PutItemRequest.builder()
                 .tableName(tableName())
                 .item(Map.of(
@@ -35,7 +35,8 @@ public class UploadBatchRepository {
                         "error_row_count", AttributeValue.fromN(String.valueOf(errorRowCount)),
                         "duplicate_row_count", AttributeValue.fromN(String.valueOf(duplicateRowCount)),
                         "upload_type", AttributeValue.fromS(uploadType),
-                        "s3_key", AttributeValue.fromS(s3Key),
+                        "file_s3_key", AttributeValue.fromS(fileS3Key),
+                        "validation_errors_s3_key", AttributeValue.fromS(validationErrorsS3Key),
                         "created_at", AttributeValue.fromS(Instant.now().toString())
                 ))
                 .build());
