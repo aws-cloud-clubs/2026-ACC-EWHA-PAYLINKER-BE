@@ -11,6 +11,8 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,9 +41,11 @@ public class CampaignController {
             @Parameter(description = "페이지 번호 (1부터 시작)")
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @Parameter(description = "페이지 크기 (1~50)")
-            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        ViewHistoryResponse data = campaignService.getViewHistory(campaignId, filter, page, pageSize);
+        ViewHistoryResponse data = campaignService.getViewHistory(
+                campaignId, filter, page, pageSize, jwt.getSubject());
         return ResponseEntity.ok(ApiResponse.ok("명세서 열람 이력 조회 성공", data));
     }
 
@@ -57,9 +61,11 @@ public class CampaignController {
             @Parameter(description = "페이지 번호 (1부터 시작)")
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @Parameter(description = "페이지 크기 (1~50)")
-            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        SendFailureResponse data = campaignService.getSendFailures(campaignId, failureReason, page, pageSize);
+        SendFailureResponse data = campaignService.getSendFailures(
+                campaignId, failureReason, page, pageSize, jwt.getSubject());
         return ResponseEntity.ok(ApiResponse.ok("실패 대상자 목록 조회 성공", data));
     }
 }
