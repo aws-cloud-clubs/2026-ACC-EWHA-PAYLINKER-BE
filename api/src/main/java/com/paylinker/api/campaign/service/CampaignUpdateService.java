@@ -6,7 +6,7 @@ import com.paylinker.api.entity.PaylinkerAuditLog;
 import com.paylinker.api.entity.PaylinkerCampaign;
 import com.paylinker.api.entity.PaylinkerCampaignLimit;
 import com.paylinker.api.entity.enums.CampaignStatus;
-import com.paylinker.api.repository.CampaignRepository;
+import com.paylinker.api.campaign.repository.CampaignRepository;
 import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
 import org.springframework.stereotype.Service;
