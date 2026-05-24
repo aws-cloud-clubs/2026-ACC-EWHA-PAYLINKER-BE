@@ -21,6 +21,22 @@ public class SecurityConfig {
             "/api/notifications/**"
     };
 
+    private static final String[] SWAGGER_PATHS = {
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**"
+    };
+
+    @Bean
+    @Order(0)
+    public SecurityFilterChain swaggerChain(HttpSecurity http) throws Exception {
+        return http
+                .securityMatcher(SWAGGER_PATHS)
+                .authorizeHttpRequests(a -> a.anyRequest().permitAll())
+                .csrf(c -> c.disable())
+                .build();
+    }
+
     @Bean
     @Order(1)
     public SecurityFilterChain adminChain(HttpSecurity http) throws Exception {

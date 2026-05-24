@@ -8,6 +8,12 @@ public enum ErrorCode {
     CAMPAIGN_FORBIDDEN(403, "해당 캠페인 조회 권한이 없습니다."),
     CAMPAIGN_ALREADY_SENDING(409, "이미 발송 중이거나 완료된 캠페인입니다."),
     CAMPAIGN_CANNOT_SEND(422, "발송 조건을 만족하지 못합니다."),
+    CAMPAIGN_INVALID_INPUT(400, "캠페인 입력값이 유효하지 않습니다."),
+    CAMPAIGN_NAME_DUPLICATE(409, "동일한 캠페인명이 이미 존재합니다."),
+    CAMPAIGN_LOCKED(422, "발송 시작된 이후에는 수정할 수 없습니다."),
+    CAMPAIGN_CANNOT_CANCEL(409, "발송이 시작되었거나 이미 종료된 캠페인은 취소할 수 없습니다."),
+    CAMPAIGN_SCHEDULE_INVALID(400, "예약 시각은 현재 시각 + 10분 이후여야 합니다."),
+    CAMPAIGN_NOT_READY(422, "수신자/명세서 매칭이 완료되지 않은 캠페인은 예약할 수 없습니다."),
 
     LINK_EXPIRED(401, "보안 링크가 만료되었습니다."),
     LINK_REUSED(401, "이미 사용된 일회용 링크입니다."),
@@ -17,9 +23,14 @@ public enum ErrorCode {
 
     DOCUMENT_NOT_FOUND(404, "명세서를 찾을 수 없습니다."),
 
-    RECIPIENT_FILE_UNSUPPORTED(400, "지원하지 않는 파일 형식입니다."),
-    RECIPIENT_FILE_TOO_LARGE(413, "업로드 가능한 최대 크기를 초과했습니다."),
+    RECIPIENT_FILE_UNSUPPORTED(400, "지원하지 않는 파일 형식입니다. (.csv 또는 .xlsx 만 허용)"),
+    RECIPIENT_FILE_TOO_LARGE(413, "업로드 가능한 최대 크기(10MB)를 초과했습니다."),
     RECIPIENT_CAMPAIGN_LIMIT_EXCEEDED(409, "캠페인 최대 수신자 수를 초과했습니다."),
+    RECIPIENT_INVALID_UPLOAD_TYPE(400, "uploadType 은 FULL_REPLACE 또는 APPEND 만 허용됩니다."),
+    RECIPIENT_UPLOAD_BATCH_NOT_FOUND(404, "해당 업로드 배치를 찾을 수 없습니다."),
+    RECIPIENT_S3_UPLOAD_FAILED(500, "파일 저장에 실패했습니다."),
+    RECIPIENT_S3_DOWNLOAD_FAILED(500, "검증 결과 파일 조회에 실패했습니다."),
+    RECIPIENT_FILE_PARSE_FAILED(400, "파일 파싱에 실패했습니다. 파일 형식을 확인해주세요."),
 
     RESEND_REQUEST_DUPLICATE(409, "이미 동일한 재전송 요청이 접수되어 있습니다."),
     RESEND_NOT_ALLOWED(422, "이 캠페인은 재전송 요청을 받지 않습니다."),
@@ -28,6 +39,12 @@ public enum ErrorCode {
     RESEND_REQUEST_ALREADY_PROCESSED(409, "이미 처리된 재전송 요청입니다."),
 
     INVALID_PAGINATION(400, "페이지 번호는 1 이상, 페이지 크기는 1~50 이어야 합니다."),
+    REMINDER_NOT_ALLOWED(422, "발송이 완료되지 않은 캠페인에는 리마인드를 보낼 수 없습니다."),
+    REMINDER_NO_TARGET(400, "리마인드 발송 대상이 없습니다."),
+    REMINDER_SELECTED_REQUIRED(400, "SELECTED 대상 지정 시 campaignRecipientIds는 1개 이상이어야 합니다."),
+    MANUAL_RESEND_NOT_ALLOWED(422, "발송이 완료되지 않은 캠페인에서는 수동 재발송을 할 수 없습니다."),
+    MANUAL_RESEND_NO_TARGET(400, "재발송 가능한 대상이 없습니다. (영구 실패는 자동 제외됩니다.)"),
+    MANUAL_RESEND_SELECTED_REQUIRED(400, "SELECTED 대상 지정 시 campaignRecipientIds는 1개 이상이어야 합니다."),
     ;
 
     private final int httpStatus;
