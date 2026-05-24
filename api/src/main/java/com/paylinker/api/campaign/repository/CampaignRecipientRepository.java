@@ -3,23 +3,23 @@ package com.paylinker.api.campaign.repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.DeleteRequest;
 import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.DeleteRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.PutRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
-import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
 import software.amazon.awssdk.services.dynamodb.model.Update;
+import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 
 @Repository
 @RequiredArgsConstructor
@@ -32,17 +32,10 @@ public class CampaignRecipientRepository {
     @Value("${aws.dynamodb.table-prefix}")
     private String tablePrefix;
 
-    /**
-     * GSI1: GSI1PK = CAMPAIGN#{campaignId}#ST#{send_status}
-     * 인덱스 이름은 aws.dynamodb.campaign-recipient.gsi1-name 으로 주입
-     */
     @Value("${aws.dynamodb.campaign-recipient.gsi1-name}")
     private String gsi1Name;
 
-    /**
-     * GSI2: GSI2PK = CAMPAIGN#{campaignId}#VW#{viewed}
-     * 인덱스 이름은 aws.dynamodb.campaign-recipient.gsi2-name 으로 주입
-     */
+   
     @Value("${aws.dynamodb.campaign-recipient.gsi2-name}")
     private String gsi2Name;
 
@@ -50,9 +43,27 @@ public class CampaignRecipientRepository {
         return tablePrefix + "-campaign-recipient";
     }
 
-    /**
-     * 캠페인의 기존 수신자를 전부 삭제한다 (FULL_REPLACE 모드).
-     */
+   
+    public List<Map<String, AttributeValue>> findByCampaignId(String campaignId) {
+        List<Map<String, AttributeValue>> results = new ArrayList<>();
+        QueryRequest req = QueryRequest.builder()
+                .tableName(tableName())
+                .indexName("campaign-index")
+                .keyConditionExpression("pk = :pk")
+                .expressionAttributeValues(Map.of(
+                        ":pk", AttributeValue.fromS("CAMPAIGN#" + campaignId)))
+                .build();
+        QueryResponse resp;
+        do {
+            resp = dynamoDbClient.query(req);
+            results.addAll(resp.items());
+            if (!resp.hasLastEvaluatedKey() || resp.lastEvaluatedKey().isEmpty()) break;
+            req = req.toBuilder().exclusiveStartKey(resp.lastEvaluatedKey()).build();
+        } while (true);
+        return results;
+    }
+
+    
     public void deleteAllByCampaignId(String campaignId) {
         List<Map<String, AttributeValue>> keys = new ArrayList<>();
         Map<String, AttributeValue> lastKey = null;
@@ -84,9 +95,7 @@ public class CampaignRecipientRepository {
         });
     }
 
-    /**
-     * 수신자 행 목록을 DynamoDB에 일괄 저장한다.
-     */
+   
     public void saveAll(List<Map<String, AttributeValue>> items) {
         partitioned(items, DYNAMO_BATCH_LIMIT).forEach(batch -> {
             List<WriteRequest> puts = batch.stream()
@@ -105,8 +114,9 @@ public class CampaignRecipientRepository {
         for (int i = 0; i < list.size(); i += size) {
             result.add(list.subList(i, Math.min(i + size, list.size())));
         }
-        return result; 
+        return result;
     }
+
     public Optional<Map<String, AttributeValue>> findById(String campaignRecipientId) {
         GetItemResponse resp = dynamoDbClient.getItem(GetItemRequest.builder()
                 .tableName(tableName())

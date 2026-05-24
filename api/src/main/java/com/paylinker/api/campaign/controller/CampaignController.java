@@ -1,8 +1,8 @@
 package com.paylinker.api.campaign.controller;
 
 import com.paylinker.api.campaign.dto.request.CampaignCreateRequest;
-import com.paylinker.api.campaign.dto.request.CampaignUpdateRequest;
 import com.paylinker.api.campaign.dto.request.CampaignScheduleRequest;
+import com.paylinker.api.campaign.dto.request.CampaignUpdateRequest;
 import com.paylinker.api.campaign.dto.request.ManualResendRequest;
 import com.paylinker.api.campaign.dto.request.ReminderRequest;
 import com.paylinker.api.campaign.dto.response.CampaignCancelResponse;
@@ -13,6 +13,8 @@ import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.campaign.dto.response.CampaignScheduleResponse;
 import com.paylinker.api.campaign.dto.response.ManualResendResponse;
 import com.paylinker.api.campaign.dto.response.ReminderResponse;
+import com.paylinker.api.campaign.dto.response.SendFailureResponse;
+import com.paylinker.api.campaign.dto.response.ViewHistoryResponse;
 import com.paylinker.api.campaign.service.CampaignCancelService;
 import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.service.CampaignDetailService;
@@ -61,11 +63,9 @@ public class CampaignController {
             Authentication authentication) {
 
         String adminId = authentication.getName();
-
         CampaignListResponse responseData = campaignService.getCampaigns(
                 adminId, status, keyword, page, pageSize, sort
         );
-
         return ResponseEntity.ok(ApiResponse.ok("캠페인 목록 조회 성공", responseData));
     }
 
@@ -76,7 +76,6 @@ public class CampaignController {
 
         String adminId = authentication.getName();
         CampaignCreateResponse responseData = campaignCreateService.createCampaign(adminId, request);
-
         return ResponseEntity.status(201).body(ApiResponse.created("캠페인 생성 완료", responseData));
     }
 
@@ -88,7 +87,6 @@ public class CampaignController {
 
         String adminId = authentication.getName();
         CampaignDetailResponse responseData = campaignUpdateService.updateCampaign(adminId, campaignId, request);
-
         return ResponseEntity.ok(ApiResponse.ok("캠페인 수정 완료", responseData));
     }
 
@@ -99,7 +97,6 @@ public class CampaignController {
 
         String adminId = authentication.getName();
         CampaignCancelResponse responseData = campaignCancelService.cancelCampaign(adminId, campaignId);
-
         return ResponseEntity.ok(ApiResponse.ok("캠페인 취소 완료", responseData));
     }
 
@@ -110,7 +107,6 @@ public class CampaignController {
 
         String adminId = authentication.getName();
         CampaignDetailResponse responseData = campaignDetailService.getCampaignDetails(adminId, campaignId);
-
         return ResponseEntity.ok(ApiResponse.ok("캠페인 상세 조회 성공", responseData));
     }
 
@@ -121,7 +117,6 @@ public class CampaignController {
 
         String adminId = authentication.getName();
         CampaignFinalReviewResponse responseData = campaignFinalReviewService.getFinalReviewInfo(adminId, campaignId);
-
         return ResponseEntity.ok(ApiResponse.ok("발송 전 최종 확인 정보 조회 성공", responseData));
     }
 
@@ -133,7 +128,6 @@ public class CampaignController {
 
         String adminId = authentication.getName();
         CampaignScheduleResponse responseData = campaignScheduleService.scheduleCampaign(adminId, campaignId, request);
-
         String msg = request.scheduledSendAt() != null ? "예약 발송 설정 완료" : "예약 발송 해제 완료";
         return ResponseEntity.ok(ApiResponse.ok(msg, responseData));
     }
@@ -171,5 +165,45 @@ public class CampaignController {
         ManualResendResponse data = campaignService.manualResend(campaignId, request, requesterId);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(ApiResponse.accepted("실패 대상자 재발송 요청이 접수되었습니다.", data));
+    }
+
+    @GetMapping("/{campaignId}/view-history")
+    @Operation(
+            summary = "명세서 열람 이력 조회 (RST-002)",
+            description = "캠페인별 수신자 명세서 열람 여부, 최초 열람 시각, 링크 상태를 목록으로 반환한다.")
+    public ResponseEntity<ApiResponse<ViewHistoryResponse>> getViewHistory(
+            @Parameter(description = "캠페인 ID", required = true)
+            @PathVariable String campaignId,
+            @Parameter(description = "열람 상태 필터 (ALL | VIEWED | UNVIEWED)")
+            @RequestParam(defaultValue = "ALL") String filter,
+            @Parameter(description = "페이지 번호 (1부터 시작)")
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @Parameter(description = "페이지 크기 (1~50)")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        ViewHistoryResponse data = campaignService.getViewHistory(
+                campaignId, filter, page, pageSize, jwt.getSubject());
+        return ResponseEntity.ok(ApiResponse.ok("명세서 열람 이력 조회 성공", data));
+    }
+
+    @GetMapping("/{campaignId}/send-failures")
+    @Operation(
+            summary = "실패 대상자 목록 조회 (RST-001)",
+            description = "대시보드 미리보기 후 '실패 건 보기'로 진입한 운영자에게 실패 대상자의 상세 목록을 반환한다.")
+    public ResponseEntity<ApiResponse<SendFailureResponse>> getSendFailures(
+            @Parameter(description = "캠페인 ID", required = true)
+            @PathVariable String campaignId,
+            @Parameter(description = "실패 사유 필터 (예: BOUNCED, INVALID_EMAIL 등)")
+            @RequestParam(required = false) String failureReason,
+            @Parameter(description = "페이지 번호 (1부터 시작)")
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @Parameter(description = "페이지 크기 (1~50)")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        SendFailureResponse data = campaignService.getSendFailures(
+                campaignId, failureReason, page, pageSize, jwt.getSubject());
+        return ResponseEntity.ok(ApiResponse.ok("실패 대상자 목록 조회 성공", data));
     }
 }
