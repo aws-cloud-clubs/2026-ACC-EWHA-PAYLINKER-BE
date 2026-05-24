@@ -70,11 +70,11 @@ public class CampaignService {
     // ────────────────────────────────────────────────
     // 캠페인 목록 조회
     // ────────────────────────────────────────────────
-
+    // 1. GSI1 인덱스를 통해 해당 관리자의 모든 캠페인 조회
     public CampaignListResponse getCampaigns(String adminId, String status, String keyword,
                                              int page, int pageSize, String sort) {
         List<PaylinkerCampaign> allCampaigns = campaignRepository.findAllByAdminId(adminId);
-
+        // 2. 필터링 (상태 및 키워드)
         Stream<PaylinkerCampaign> stream = allCampaigns.stream();
         if (status != null && !status.isBlank()) {
             stream = stream.filter(c -> c.getStatus() != null && c.getStatus().name().equals(status));
@@ -85,20 +85,22 @@ public class CampaignService {
 
         List<PaylinkerCampaign> filteredList = stream.toList();
         int totalCount = filteredList.size();
-
+        // 3. 비즈니스 단 페이징 검증 (데이터가 있는데 범위를 초과한 경우 예외 발생)
         int fromIndex = (page - 1) * pageSize;
         if (totalCount > 0 && fromIndex >= totalCount) {
             throw new CustomException(ErrorCode.INVALID_PAGINATION);
         }
+        // 데이터가 없으면 빈 리스트 반환
         if (totalCount == 0) {
             return new CampaignListResponse(0, page, pageSize, List.of());
         }
-
+        // 4. 정렬 처리
         Comparator<PaylinkerCampaign> comparator;
         if ("sendCompletedAt:desc".equals(sort)) {
             comparator = Comparator.comparing(PaylinkerCampaign::getSendCompletedAt,
                     Comparator.nullsLast(String::compareTo)).reversed();
         } else {
+            // 기본값: createdAt 내림차순
             comparator = Comparator.comparing(PaylinkerCampaign::getCreatedAt,
                     Comparator.nullsLast(String::compareTo)).reversed();
         }
