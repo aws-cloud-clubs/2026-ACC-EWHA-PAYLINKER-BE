@@ -32,8 +32,7 @@ dependencies {
 
     implementation("org.apache.poi:poi-ooxml:5.3.0")
     implementation("org.apache.commons:commons-csv:1.12.0")
-
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
