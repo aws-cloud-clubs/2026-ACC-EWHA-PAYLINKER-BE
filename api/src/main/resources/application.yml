@@ -1,6 +1,15 @@
 spring:
   application:
     name: paylinker-api
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION:ap-northeast-2}
+  config:
+    import:
+      - optional:aws-secretsmanager:/dev/paylinker/app
+      - optional:aws-secretsmanager:/dev/paylinker/dynamodb
+      - optional:aws-secretsmanager:/dev/paylinker/redis
   servlet:
     multipart:
       max-file-size: 10MB
@@ -30,6 +39,11 @@ management:
     health:
       probes:
         enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState, redis
       show-details: never
 
 aws:

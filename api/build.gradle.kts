@@ -6,6 +6,7 @@ plugins {
 dependencyManagement {
     imports {
         mavenBom("software.amazon.awssdk:bom:2.28.8")
+        mavenBom("io.awspring.cloud:spring-cloud-aws-dependencies:4.0.2")
     }
 }
 
@@ -29,6 +30,7 @@ dependencies {
     implementation("software.amazon.awssdk:s3")
     implementation("software.amazon.awssdk:cognitoidentityprovider")
     implementation("software.amazon.awssdk:secretsmanager")
+    implementation("io.awspring.cloud:spring-cloud-aws-starter-secrets-manager")
 
     implementation("org.apache.poi:poi-ooxml:5.3.0")
     implementation("org.apache.commons:commons-csv:1.12.0")
