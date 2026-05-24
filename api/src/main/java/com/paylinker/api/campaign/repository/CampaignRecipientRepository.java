@@ -33,14 +33,14 @@ public class CampaignRecipientRepository {
     private String tablePrefix;
 
     /**
-     * GSI1: gsi1_pk = CAMPAIGN#{campaignId}#ST#{send_status}
+     * GSI1: GSI1PK = CAMPAIGN#{campaignId}#ST#{send_status}
      * 인덱스 이름은 aws.dynamodb.campaign-recipient.gsi1-name 으로 주입
      */
     @Value("${aws.dynamodb.campaign-recipient.gsi1-name}")
     private String gsi1Name;
 
     /**
-     * GSI2: gsi2_pk = CAMPAIGN#{campaignId}#VW#{viewed}
+     * GSI2: GSI2PK = CAMPAIGN#{campaignId}#VW#{viewed}
      * 인덱스 이름은 aws.dynamodb.campaign-recipient.gsi2-name 으로 주입
      */
     @Value("${aws.dynamodb.campaign-recipient.gsi2-name}")
@@ -115,14 +115,14 @@ public class CampaignRecipientRepository {
         return resp.hasItem() ? Optional.of(resp.item()) : Optional.empty();
     }
 
-    /** GSI2(gsi2_pk = CAMPAIGN#{id}#VW#0): 미열람 수신자 전체 조회 */
+    /** GSI2(GSI2PK = CAMPAIGN#{id}#VW#0): 미열람 수신자 전체 조회 */
     public List<Map<String, AttributeValue>> findUnviewedByCampaignId(String campaignId) {
-        return queryByGsiPk(gsi2Name, "gsi2_pk", "CAMPAIGN#" + campaignId + "#VW#0");
+        return queryByGsiPk(gsi2Name, "GSI2PK", "CAMPAIGN#" + campaignId + "#VW#0");
     }
 
-    /** GSI1(gsi1_pk = CAMPAIGN#{id}#ST#FAILED): 발송 실패 수신자 전체 조회 */
+    /** GSI1(GSI1PK = CAMPAIGN#{id}#ST#FAILED): 발송 실패 수신자 전체 조회 */
     public List<Map<String, AttributeValue>> findFailedByCampaignId(String campaignId) {
-        return queryByGsiPk(gsi1Name, "gsi1_pk", "CAMPAIGN#" + campaignId + "#ST#FAILED");
+        return queryByGsiPk(gsi1Name, "GSI1PK", "CAMPAIGN#" + campaignId + "#ST#FAILED");
     }
 
     /** reminder_count 증가 + last_reminder_sent_at 갱신 트랜잭션 아이템 */

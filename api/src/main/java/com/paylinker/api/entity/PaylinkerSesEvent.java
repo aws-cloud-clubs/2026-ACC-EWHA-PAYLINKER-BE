@@ -124,7 +124,7 @@ public class PaylinkerSesEvent {
         this.ttlEpoch = ttlEpoch;
     }
 
-    @DynamoDbAttribute("gsi1_pk")
+    @DynamoDbAttribute("GSI1PK")
     @DynamoDbSecondaryPartitionKey(indexNames = INDEX_GSI1)
     public String getGsi1Pk() {
         return gsi1Pk;
@@ -134,7 +134,7 @@ public class PaylinkerSesEvent {
         this.gsi1Pk = gsi1Pk;
     }
 
-    @DynamoDbAttribute("gsi2_pk")
+    @DynamoDbAttribute("GSI2PK")
     @DynamoDbSecondaryPartitionKey(indexNames = INDEX_GSI2)
     public String getGsi2Pk() {
         return gsi2Pk;
@@ -144,7 +144,7 @@ public class PaylinkerSesEvent {
         this.gsi2Pk = gsi2Pk;
     }
 
-    @DynamoDbAttribute("gsi2_sk")
+    @DynamoDbAttribute("GSI2SK")
     @DynamoDbSecondarySortKey(indexNames = INDEX_GSI2)
     public String getGsi2Sk() {
         return gsi2Sk;

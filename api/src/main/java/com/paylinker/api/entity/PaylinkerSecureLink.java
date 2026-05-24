@@ -176,7 +176,7 @@ public class PaylinkerSecureLink {
         this.ttlEpoch = ttlEpoch;
     }
 
-    @DynamoDbAttribute("gsi1_pk")
+    @DynamoDbAttribute("GSI1PK")
     @DynamoDbSecondaryPartitionKey(indexNames = INDEX_GSI1)
     public String getGsi1Pk() {
         return gsi1Pk;
@@ -186,7 +186,7 @@ public class PaylinkerSecureLink {
         this.gsi1Pk = gsi1Pk;
     }
 
-    @DynamoDbAttribute("gsi1_sk")
+    @DynamoDbAttribute("GSI1SK")
     @DynamoDbSecondarySortKey(indexNames = INDEX_GSI1)
     public String getGsi1Sk() {
         return gsi1Sk;
