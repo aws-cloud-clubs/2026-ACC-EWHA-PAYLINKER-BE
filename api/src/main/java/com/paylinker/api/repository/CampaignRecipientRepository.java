@@ -46,7 +46,7 @@ public class CampaignRecipientRepository {
     }
 
     public int countUnviewed(String campaignId) {
-        return countByGsiPk("gsi2_pk",
+        return countByGsiPk("GSI2PK",
                 PaylinkerCampaignRecipient.gsi2Pk(campaignId, PaylinkerCampaignRecipient.VIEWED_FALSE),
                 PaylinkerCampaignRecipient.INDEX_GSI2);
     }
@@ -58,7 +58,7 @@ public class CampaignRecipientRepository {
     }
 
     public int countFailed(String campaignId) {
-        return countByGsiPk("gsi1_pk",
+        return countByGsiPk("GSI1PK",
                 PaylinkerCampaignRecipient.gsi1Pk(campaignId, PaylinkerCampaignRecipient.SEND_STATUS_FAILED),
                 PaylinkerCampaignRecipient.INDEX_GSI1);
     }
