@@ -10,8 +10,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteRequest;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.PutRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
@@ -73,11 +73,9 @@ public class CampaignRecipientRepository {
         partitioned(keys, DYNAMO_BATCH_LIMIT).forEach(batch -> {
             List<WriteRequest> deletes = batch.stream()
                     .map(k -> WriteRequest.builder()
-                            .deleteRequest(DeleteRequest.builder()
-                                    .key(Map.of(
-                                            "campaign_id", k.get("campaign_id"),
-                                            "employee_no", k.get("employee_no")))
-                                    .build())
+                            .deleteRequest(DeleteRequest.builder().key(Map.of(
+                                    "campaign_id", k.get("campaign_id"),
+                                    "employee_no", k.get("employee_no"))).build())
                             .build())
                     .collect(Collectors.toList());
             dynamoDbClient.batchWriteItem(BatchWriteItemRequest.builder()
