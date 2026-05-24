@@ -6,8 +6,10 @@ import com.paylinker.api.entity.PaylinkerCampaignLimit;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.enhanced.dynamodb.Expression;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
+import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.TransactWriteItemsEnhancedRequest;
 import java.util.List;
 import java.util.Map;
@@ -57,10 +59,35 @@ public class CampaignRepository {
                 .toList();
     }
 
-    // 이름 중복 검사를 위한 메서드
+    // 이름 중복 검사를 위한 메서드 (필터링 최적화 적용)
     public boolean existsByAdminIdAndCampaignName(String adminId, String campaignName) {
-        return findAllByAdminId(adminId).stream()
-                .anyMatch(c -> c.getCampaignName() != null && c.getCampaignName().equals(campaignName));
+        DynamoDbTable<PaylinkerCampaign> campaignTable =
+                enhancedClient.table("paylinker_campaign", TableSchema.fromBean(PaylinkerCampaign.class));
+
+        DynamoDbIndex<PaylinkerCampaign> gsi1 = campaignTable.index(PaylinkerCampaign.INDEX_GSI1);
+
+        // 파티션 키: 해당 Admin의 데이터만 탐색
+        QueryConditional queryConditional = QueryConditional.keyEqualTo(k ->
+                k.partitionValue(PaylinkerCampaign.gsi1Pk(adminId)));
+
+        // 필터 조건: 캠페인 이름 일치 여부를 DB 서버 단에서 필터링
+        Expression filterExpression = Expression.builder()
+                .expression("campaign_name = :name")
+                .expressionValues(Map.of(":name", AttributeValue.fromS(campaignName)))
+                .build();
+
+        // limit(1)을 설정하여 중복되는 첫 번째 건을 찾으면 즉시 검색 종료
+        QueryEnhancedRequest request = QueryEnhancedRequest.builder()
+                .queryConditional(queryConditional)
+                .filterExpression(filterExpression)
+                .limit(1)
+                .build();
+
+        // 1건이라도 존재하면 중복(true)으로 반환
+        return gsi1.query(request).stream()
+                .flatMap(page -> page.items().stream())
+                .findFirst()
+                .isPresent();
     }
 
     // 트랜잭션을 이용한 3개 테이블 동시 저장
