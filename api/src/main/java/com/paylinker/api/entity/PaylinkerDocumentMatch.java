@@ -121,7 +121,7 @@ public class PaylinkerDocumentMatch {
         this.createdAt = createdAt;
     }
 
-    @DynamoDbAttribute("gsi1_pk")
+    @DynamoDbAttribute("GSI1PK")
     @DynamoDbSecondaryPartitionKey(indexNames = INDEX_GSI1)
     public String getGsi1Pk() {
         return gsi1Pk;
