@@ -19,7 +19,7 @@ public class CampaignDetailService {
 
     public CampaignDetailResponse getCampaignDetails(String adminId, String campaignId) {
         // 1. 캠페인 메타데이터 조회 및 검증
-        PaylinkerCampaign campaign = campaignRepository.findById(campaignId);
+        PaylinkerCampaign campaign = campaignRepository.findCampaignById(campaignId);
         if (campaign == null) {
             throw new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND);
         }
