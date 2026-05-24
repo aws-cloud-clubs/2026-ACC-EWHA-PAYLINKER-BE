@@ -30,7 +30,7 @@ dependencies {
     implementation("software.amazon.awssdk:cognitoidentityprovider")
     implementation("software.amazon.awssdk:secretsmanager")
 
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
