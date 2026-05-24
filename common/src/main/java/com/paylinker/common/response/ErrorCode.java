@@ -22,8 +22,8 @@ public enum ErrorCode {
     RECIPIENT_CAMPAIGN_LIMIT_EXCEEDED(409, "캠페인 최대 수신자 수를 초과했습니다."),
     RECIPIENT_INVALID_UPLOAD_TYPE(400, "uploadType 은 FULL_REPLACE 또는 APPEND 만 허용됩니다."),
     RECIPIENT_UPLOAD_BATCH_NOT_FOUND(404, "해당 업로드 배치를 찾을 수 없습니다."),
-    RECIPIENT_S3_DOWNLOAD_FAILED(500, "검증 결과 파일 조회에 실패했습니다."),
     RECIPIENT_S3_UPLOAD_FAILED(500, "파일 저장에 실패했습니다."),
+    RECIPIENT_S3_DOWNLOAD_FAILED(500, "검증 결과 파일 조회에 실패했습니다."),
     RECIPIENT_FILE_PARSE_FAILED(400, "파일 파싱에 실패했습니다. 파일 형식을 확인해주세요."),
 
     RESEND_REQUEST_DUPLICATE(409, "이미 동일한 재전송 요청이 접수되어 있습니다."),
@@ -33,6 +33,14 @@ public enum ErrorCode {
     RESEND_REQUEST_ALREADY_PROCESSED(409, "이미 처리된 재전송 요청입니다."),
 
     INVALID_PAGINATION(400, "페이지 번호는 1 이상, 페이지 크기는 1~50 이어야 합니다."),
+
+    REMINDER_NOT_ALLOWED(422, "발송이 완료되지 않은 캠페인에는 리마인드를 보낼 수 없습니다."),
+    REMINDER_NO_TARGET(400, "리마인드 발송 대상이 없습니다."),
+    REMINDER_SELECTED_REQUIRED(400, "SELECTED 대상 지정 시 campaignRecipientIds는 1개 이상이어야 합니다."),
+
+    MANUAL_RESEND_NOT_ALLOWED(422, "발송이 완료되지 않은 캠페인에서는 수동 재발송을 할 수 없습니다."),
+    MANUAL_RESEND_NO_TARGET(400, "재발송 가능한 대상이 없습니다. (영구 실패는 자동 제외됩니다.)"),
+    MANUAL_RESEND_SELECTED_REQUIRED(400, "SELECTED 대상 지정 시 campaignRecipientIds는 1개 이상이어야 합니다."),
     ;
 
     private final int httpStatus;

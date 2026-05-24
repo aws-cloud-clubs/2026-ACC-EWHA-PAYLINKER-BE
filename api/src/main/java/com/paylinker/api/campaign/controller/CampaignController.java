@@ -1,0 +1,66 @@
+package com.paylinker.api.campaign.controller;
+
+import com.paylinker.api.campaign.dto.request.ManualResendRequest;
+import com.paylinker.api.campaign.dto.request.ReminderRequest;
+import com.paylinker.api.campaign.dto.response.ManualResendResponse;
+import com.paylinker.api.campaign.dto.response.ReminderResponse;
+import com.paylinker.api.campaign.service.CampaignService;
+import com.paylinker.common.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/campaigns")
+@RequiredArgsConstructor
+@Tag(name = "Campaign", description = "캠페인 관리 API")
+public class CampaignController {
+
+    private final CampaignService campaignService;
+
+    @PostMapping("/{campaignId}/reminders")
+    @Operation(
+            summary = "미확인 수신자 리마인드 발송 (SND-001)",
+            description = "미확인 수신자(전체 또는 선택)에게 리마인드 메일 발송을 요청한다. " +
+                    "캠페인 status는 SENT 또는 PARTIAL_FAILED이어야 한다.")
+    public ResponseEntity<ApiResponse<ReminderResponse>> sendReminder(
+            @Parameter(description = "캠페인 ID (UUID)", required = true)
+            @PathVariable String campaignId,
+            @Valid @RequestBody ReminderRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        String requesterId = jwt.getSubject();
+        ReminderResponse data = campaignService.sendReminder(campaignId, request, requesterId);
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.accepted("리마인드 발송 요청이 접수되었습니다.", data));
+    }
+
+    @PostMapping("/{campaignId}/resends")
+    @Operation(
+            summary = "실패 대상자 수동 재발송 (SND-002)",
+            description = "실패 대상자(전체 또는 선택)에게 새 링크 발급 후 재발송을 요청한다. " +
+                    "영구 실패(INVALID_EMAIL/BLOCKED/COMPLAINT)는 자동 제외된다. " +
+                    "캠페인 status는 SENT 또는 PARTIAL_FAILED이어야 한다.")
+    public ResponseEntity<ApiResponse<ManualResendResponse>> manualResend(
+            @Parameter(description = "캠페인 ID (UUID)", required = true)
+            @PathVariable String campaignId,
+            @Valid @RequestBody ManualResendRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        String requesterId = jwt.getSubject();
+        ManualResendResponse data = campaignService.manualResend(campaignId, request, requesterId);
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.accepted("실패 대상자 재발송 요청이 접수되었습니다.", data));
+    }
+}
