@@ -1,5 +1,8 @@
 package com.paylinker.api.campaign.controller;
 
+import com.paylinker.api.campaign.dto.request.CampaignCreateRequest;
+import com.paylinker.api.campaign.dto.response.CampaignCreateResponse;
+import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.dto.request.ManualResendRequest;
 import com.paylinker.api.campaign.dto.request.ReminderRequest;
 import com.paylinker.api.campaign.dto.response.CampaignListResponse;
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 public class CampaignController {
 
     private final CampaignService campaignService;
+    private final CampaignCreateService campaignCreateService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<CampaignListResponse>> getCampaigns(
@@ -47,6 +51,17 @@ public class CampaignController {
         );
 
         return ResponseEntity.ok(ApiResponse.ok("캠페인 목록 조회 성공", responseData));
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<CampaignCreateResponse>> createCampaign(
+            @Valid @RequestBody CampaignCreateRequest request,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignCreateResponse responseData = campaignCreateService.createCampaign(adminId, request);
+
+        return ResponseEntity.status(201).body(ApiResponse.created("캠페인 생성 완료", responseData));
     }
 
     @PostMapping("/{campaignId}/reminders")
