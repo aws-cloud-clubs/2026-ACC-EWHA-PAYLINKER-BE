@@ -19,7 +19,14 @@ public final class MaskingUtil {
         }
         String local = email.substring(0, at);
         String domain = email.substring(at);
-        String prefix = local.length() <= EMAIL_PREFIX_LENGTH ? local : local.substring(0, EMAIL_PREFIX_LENGTH);
+        String prefix;
+        if (local.length() <= 1) {
+            prefix = "";
+        } else if (local.length() <= EMAIL_PREFIX_LENGTH) {
+            prefix = local.substring(0, 1);
+        } else {
+            prefix = local.substring(0, EMAIL_PREFIX_LENGTH);
+        }
         return prefix + EMAIL_MASK + domain;
     }
 
