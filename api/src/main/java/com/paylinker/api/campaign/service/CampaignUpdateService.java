@@ -28,7 +28,7 @@ public class CampaignUpdateService {
     }
 
     public CampaignDetailResponse updateCampaign(String adminId, String campaignId, CampaignUpdateRequest request) {
-        // 1. 기존 데이터 조회 (팀원분 findById가 아닌, 엔티티를 반환하는 findCampaignById 사용)
+        // 1. 기존 데이터 조회
         PaylinkerCampaign campaign = campaignRepository.findCampaignById(campaignId);
         if (campaign == null || !campaign.getAdminId().equals(adminId)) {
             throw new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND);
