@@ -58,6 +58,7 @@ public class CampaignRepository {
         return resp.hasItem() ? Optional.of(resp.item()) : Optional.empty();
     }
 
+    public Optional<PaylinkerCampaign> findByCampaignId(String campaignId) {
         Key key = Key.builder()
                 .partitionValue(PaylinkerCampaign.pk(campaignId))
                 .sortValue(PaylinkerCampaign.SK_METADATA)
