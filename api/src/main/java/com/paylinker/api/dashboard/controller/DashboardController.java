@@ -1,6 +1,7 @@
 package com.paylinker.api.dashboard.controller;
 
 import com.paylinker.api.dashboard.dto.DashboardCampaignSummaryResponse;
+import com.paylinker.api.dashboard.dto.DashboardSummaryResponse;
 import com.paylinker.api.dashboard.service.DashboardService;
 import com.paylinker.common.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,13 @@ public class DashboardController {
 
     public DashboardController(DashboardService dashboardService) {
         this.dashboardService = dashboardService;
+    }
+
+    @GetMapping("/summary")
+    public ResponseEntity<ApiResponse<DashboardSummaryResponse>> getSummary(Authentication authentication) {
+        String adminId = authentication.getName();
+        DashboardSummaryResponse data = dashboardService.getSummary(adminId);
+        return ResponseEntity.ok(ApiResponse.ok("대시보드 요약 조회 성공", data));
     }
 
     @GetMapping("/campaigns/{campaignId}/summary")
