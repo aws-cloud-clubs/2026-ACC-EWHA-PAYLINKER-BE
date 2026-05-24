@@ -26,6 +26,9 @@ import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,6 +40,8 @@ public class DashboardService {
     private static final int VIEW_RATE_SCALE = 4;
     private static final int RECENT_CAMPAIGN_LIMIT = 5;
     private static final int RECIPIENT_PREVIEW_LIMIT = 5;
+    private static final DateTimeFormatter NORMALIZED_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
     private static final String TREND_RANGE_DEFAULT_FROM = "1970-01-01T00:00:00Z";
 
     private final CampaignRepository campaignRepository;
@@ -182,22 +187,46 @@ public class DashboardService {
 
     private String resolveFrom(String from, PaylinkerCampaign campaign) {
         if (from != null && !from.isBlank()) {
-            return from;
+            return normalizeUserTimestamp(from);
         }
         if (campaign.getSendStartedAt() != null && !campaign.getSendStartedAt().isBlank()) {
-            return campaign.getSendStartedAt();
+            return normalizeStoredTimestamp(campaign.getSendStartedAt());
         }
         if (campaign.getSendCompletedAt() != null && !campaign.getSendCompletedAt().isBlank()) {
-            return campaign.getSendCompletedAt();
+            return normalizeStoredTimestamp(campaign.getSendCompletedAt());
         }
         return TREND_RANGE_DEFAULT_FROM;
     }
 
     private String resolveTo(String to) {
         if (to != null && !to.isBlank()) {
-            return to;
+            return normalizeUserTimestamp(to);
         }
-        return OffsetDateTime.now(ZoneOffset.UTC).toString();
+        return OffsetDateTime.now(ZoneOffset.UTC)
+                .truncatedTo(ChronoUnit.SECONDS)
+                .format(NORMALIZED_FORMATTER);
+    }
+
+    private String normalizeUserTimestamp(String input) {
+        try {
+            return OffsetDateTime.parse(input)
+                    .withOffsetSameInstant(ZoneOffset.UTC)
+                    .truncatedTo(ChronoUnit.SECONDS)
+                    .format(NORMALIZED_FORMATTER);
+        } catch (DateTimeParseException e) {
+            throw new CustomException(ErrorCode.INVALID_TIME_PARAMETER);
+        }
+    }
+
+    private String normalizeStoredTimestamp(String input) {
+        try {
+            return OffsetDateTime.parse(input)
+                    .withOffsetSameInstant(ZoneOffset.UTC)
+                    .truncatedTo(ChronoUnit.SECONDS)
+                    .format(NORMALIZED_FORMATTER);
+        } catch (DateTimeParseException ignored) {
+            return input;
+        }
     }
 
     private boolean isRangeInverted(String fromIso, String toIso) {
