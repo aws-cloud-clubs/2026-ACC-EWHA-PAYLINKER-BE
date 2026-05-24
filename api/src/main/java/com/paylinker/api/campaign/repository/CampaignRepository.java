@@ -115,7 +115,7 @@ public class CampaignRepository {
         return getLimitTable().getItem(r -> r.key(k -> k.partitionValue(PaylinkerCampaignLimit.pk(campaignId)).sortValue(PaylinkerCampaignLimit.SK_LIMIT)));
     }
 
-    // 캠페인 생성, 수정, 삭제에서 공통으로 사용하는 트랜잭션 메서드
+    //캠페인 생성, 수정, 삭제에서 공통으로 사용하는 트랜잭션 메서드
     public void executeTransaction(TransactWriteItemsEnhancedRequest request) {
         enhancedClient.transactWriteItems(request);
     }

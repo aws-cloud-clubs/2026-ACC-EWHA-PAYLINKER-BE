@@ -14,6 +14,7 @@ import com.paylinker.api.campaign.dto.response.ManualResendResponse;
 import com.paylinker.api.campaign.dto.response.ReminderResponse;
 import com.paylinker.api.campaign.service.CampaignService;
 import com.paylinker.api.campaign.service.CampaignUpdateService;
+import com.paylinker.api.campaign.service.CampaignDetailService;
 import com.paylinker.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -41,6 +42,7 @@ public class CampaignController {
     private final CampaignCreateService campaignCreateService;
     private final CampaignUpdateService campaignUpdateService;
     private final CampaignCancelService campaignCancelService;
+    private final CampaignDetailService campaignDetailService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<CampaignListResponse>> getCampaigns(
@@ -94,11 +96,22 @@ public class CampaignController {
         return ResponseEntity.ok(ApiResponse.ok("캠페인 취소 완료", responseData));
     }
 
+    @GetMapping("/{campaignId}")
+    public ResponseEntity<ApiResponse<CampaignDetailResponse>> getCampaignDetails(
+            @PathVariable String campaignId,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignDetailResponse responseData = campaignDetailService.getCampaignDetails(adminId, campaignId);
+
+        return ResponseEntity.ok(ApiResponse.ok("캠페인 상세 조회 성공", responseData));
+    }
+
     @PostMapping("/{campaignId}/reminders")
     @Operation(
             summary = "미확인 수신자 리마인드 발송 (SND-001)",
             description = "미확인 수신자(전체 또는 선택)에게 리마인드 메일 발송을 요청한다. " +
-                    "캠페인 status는 SENT 또는 PARTIAL_FAILED이어야 단다.")
+                    "캠페인 status는 SENT 또는 PARTIAL_FAILED이어야 한다.")
     public ResponseEntity<ApiResponse<ReminderResponse>> sendReminder(
             @Parameter(description = "캠페인 ID (UUID)", required = true)
             @PathVariable String campaignId,
