@@ -6,6 +6,7 @@ import com.paylinker.api.campaign.dto.response.CampaignCancelResponse;
 import com.paylinker.api.campaign.dto.response.CampaignCreateResponse;
 import com.paylinker.api.campaign.dto.response.CampaignDetailResponse;
 import com.paylinker.api.campaign.dto.response.CampaignListResponse;
+import com.paylinker.api.campaign.dto.response.CampaignFinalReviewResponse;
 import com.paylinker.api.campaign.service.CampaignCancelService;
 import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.dto.request.ManualResendRequest;
@@ -15,6 +16,7 @@ import com.paylinker.api.campaign.dto.response.ReminderResponse;
 import com.paylinker.api.campaign.service.CampaignService;
 import com.paylinker.api.campaign.service.CampaignUpdateService;
 import com.paylinker.api.campaign.service.CampaignDetailService;
+import com.paylinker.api.campaign.service.CampaignFinalReviewService;
 import com.paylinker.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -43,6 +45,7 @@ public class CampaignController {
     private final CampaignUpdateService campaignUpdateService;
     private final CampaignCancelService campaignCancelService;
     private final CampaignDetailService campaignDetailService;
+    private final CampaignFinalReviewService campaignFinalReviewService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<CampaignListResponse>> getCampaigns(
@@ -105,6 +108,17 @@ public class CampaignController {
         CampaignDetailResponse responseData = campaignDetailService.getCampaignDetails(adminId, campaignId);
 
         return ResponseEntity.ok(ApiResponse.ok("캠페인 상세 조회 성공", responseData));
+    }
+
+    @GetMapping("/{campaignId}/final-review")
+    public ResponseEntity<ApiResponse<CampaignFinalReviewResponse>> getFinalReviewInfo(
+            @PathVariable String campaignId,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignFinalReviewResponse responseData = campaignFinalReviewService.getFinalReviewInfo(adminId, campaignId);
+
+        return ResponseEntity.ok(ApiResponse.ok("발송 전 최종 확인 정보 조회 성공", responseData));
     }
 
     @PostMapping("/{campaignId}/reminders")

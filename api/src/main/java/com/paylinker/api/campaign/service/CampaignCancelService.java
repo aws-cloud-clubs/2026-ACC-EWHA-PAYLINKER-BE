@@ -40,6 +40,8 @@ public class CampaignCancelService {
             throw new CustomException(ErrorCode.CAMPAIGN_CANNOT_CANCEL);
         }
 
+        // TODO: 만약 status가 SCHEDULED인 경우, 예약 스케줄러(Redis 분산 락 등) 제거 로직을 여기에 연동할 것.
+
         // 3. 상태 변경 및 취소 시각 기록 (KST 기준)
         ZonedDateTime nowKst = ZonedDateTime.now(ZoneId.of("Asia/Seoul"));
         String cancelledAt = nowKst.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
