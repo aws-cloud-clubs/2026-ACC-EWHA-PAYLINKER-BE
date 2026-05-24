@@ -2,6 +2,7 @@ package com.paylinker.api.campaign.controller;
 
 import com.paylinker.api.campaign.dto.request.ManualResendRequest;
 import com.paylinker.api.campaign.dto.request.ReminderRequest;
+import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.campaign.dto.response.ManualResendResponse;
 import com.paylinker.api.campaign.dto.response.ReminderResponse;
 import com.paylinker.api.campaign.service.CampaignService;
@@ -10,24 +11,43 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/campaigns")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "Campaign", description = "캠페인 관리 API")
 public class CampaignController {
 
     private final CampaignService campaignService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<CampaignListResponse>> getCampaigns(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") @Min(value = 1, message = "페이지 번호는 1 이상이어야 합니다.") int page,
+            @RequestParam(defaultValue = "20") @Min(value = 1, message = "페이지 크기는 1 이상이어야 합니다.") @Max(value = 50, message = "페이지 크기는 50 이하이어야 합니다.") int pageSize,
+            @RequestParam(defaultValue = "createdAt:desc") String sort,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+
+        CampaignListResponse responseData = campaignService.getCampaigns(
+                adminId, status, keyword, page, pageSize, sort
+        );
+
+        return ResponseEntity.ok(ApiResponse.ok("캠페인 목록 조회 성공", responseData));
+    }
 
     @PostMapping("/{campaignId}/reminders")
     @Operation(
