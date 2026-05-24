@@ -27,7 +27,7 @@ public class CampaignCancelService {
 
     public CampaignCancelResponse cancelCampaign(String adminId, String campaignId) {
         // 1. 기존 데이터 조회
-        PaylinkerCampaign campaign = campaignRepository.findById(campaignId);
+        PaylinkerCampaign campaign = campaignRepository.findCampaignById(campaignId);
 
         // 캠페인이 없거나, 권한이 없는(본인 캠페인이 아닌) 경우 404 처리
         if (campaign == null || !campaign.getAdminId().equals(adminId)) {
@@ -39,8 +39,6 @@ public class CampaignCancelService {
         if (status != CampaignStatus.DRAFT && status != CampaignStatus.READY && status != CampaignStatus.SCHEDULED) {
             throw new CustomException(ErrorCode.CAMPAIGN_CANNOT_CANCEL);
         }
-
-        // TODO: 만약 status가 SCHEDULED인 경우, 예약 스케줄러(Redis 분산 락 등) 제거 로직을 여기에 연동할 것.
 
         // 3. 상태 변경 및 취소 시각 기록 (KST 기준)
         ZonedDateTime nowKst = ZonedDateTime.now(ZoneId.of("Asia/Seoul"));
