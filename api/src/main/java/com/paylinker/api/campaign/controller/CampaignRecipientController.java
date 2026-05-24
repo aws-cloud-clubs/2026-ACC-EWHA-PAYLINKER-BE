@@ -1,21 +1,9 @@
 package com.paylinker.api.campaign.controller;
 
-import com.paylinker.api.campaign.dto.response.RecipientValidationResponse;
-import com.paylinker.api.campaign.service.RecipientValidationService;
-import com.paylinker.common.response.ApiResponse;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.paylinker.api.campaign.dto.response.RecipientUploadResponse;
+import com.paylinker.api.campaign.dto.response.RecipientValidationResponse;
 import com.paylinker.api.campaign.service.CampaignRecipientService;
+import com.paylinker.api.campaign.service.RecipientValidationService;
 import com.paylinker.common.response.ApiResponse;
 import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
@@ -29,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,7 +32,10 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "Campaign", description = "캠페인 관련 API")
 public class CampaignRecipientController {
 
+    private static final Set<String> VALID_UPLOAD_TYPES = Set.of("FULL_REPLACE", "APPEND");
+
     private final RecipientValidationService recipientValidationService;
+    private final CampaignRecipientService campaignRecipientService;
 
     @GetMapping("/{campaignId}/recipients/upload/{uploadBatchId}/validation")
     @Operation(
@@ -60,9 +52,7 @@ public class CampaignRecipientController {
         RecipientValidationResponse data =
                 recipientValidationService.getValidationResult(campaignId, uploadBatchId, adminId);
         return ResponseEntity.ok(ApiResponse.ok("수신자 검증 결과 조회 성공", data));
-    private static final Set<String> VALID_UPLOAD_TYPES = Set.of("FULL_REPLACE", "APPEND");
-
-    private final CampaignRecipientService campaignRecipientService;
+    }
 
     @PostMapping(value = "/{campaignId}/recipients/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
@@ -85,7 +75,8 @@ public class CampaignRecipientController {
         }
 
         String adminId = jwt.getSubject();
-        RecipientUploadResponse data = campaignRecipientService.uploadRecipients(campaignId, file, uploadType, adminId);
+        RecipientUploadResponse data =
+                campaignRecipientService.uploadRecipients(campaignId, file, uploadType, adminId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("수신자 파일 업로드 완료", data));
     }
