@@ -10,7 +10,8 @@ public enum ErrorCode {
     CAMPAIGN_CANNOT_SEND(422, "발송 조건을 만족하지 못합니다."),
     CAMPAIGN_INVALID_INPUT(400, "캠페인 입력값이 유효하지 않습니다."),
     CAMPAIGN_NAME_DUPLICATE(409, "동일한 캠페인명이 이미 존재합니다."),
-    CAMPAIGN_LOCKED(422, "발송 시작된 이후에는 수정할 수 없습니다."), // feat/#39 추가
+    CAMPAIGN_LOCKED(422, "발송 시작된 이후에는 수정할 수 없습니다."),
+    CAMPAIGN_CANNOT_CANCEL(409, "발송이 시작되었거나 이미 종료된 캠페인은 취소할 수 없습니다."), // feat/#41 추가
 
     LINK_EXPIRED(401, "보안 링크가 만료되었습니다."),
     LINK_REUSED(401, "이미 사용된 일회용 링크입니다."),
@@ -39,7 +40,6 @@ public enum ErrorCode {
     REMINDER_NOT_ALLOWED(422, "발송이 완료되지 않은 캠페인에는 리마인드를 보낼 수 없습니다."),
     REMINDER_NO_TARGET(400, "리마인드 발송 대상이 없습니다."),
     REMINDER_SELECTED_REQUIRED(400, "SELECTED 대상 지정 시 campaignRecipientIds는 1개 이상이어야 합니다."),
-
     MANUAL_RESEND_NOT_ALLOWED(422, "발송이 완료되지 않은 캠페인에서는 수동 재발송을 할 수 없습니다."),
     MANUAL_RESEND_NO_TARGET(400, "재발송 가능한 대상이 없습니다. (영구 실패는 자동 제외됩니다.)"),
     MANUAL_RESEND_SELECTED_REQUIRED(400, "SELECTED 대상 지정 시 campaignRecipientIds는 1개 이상이어야 합니다.")

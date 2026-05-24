@@ -2,12 +2,14 @@ package com.paylinker.api.campaign.controller;
 
 import com.paylinker.api.campaign.dto.request.CampaignCreateRequest;
 import com.paylinker.api.campaign.dto.request.CampaignUpdateRequest;
+import com.paylinker.api.campaign.dto.response.CampaignCancelResponse;
 import com.paylinker.api.campaign.dto.response.CampaignCreateResponse;
 import com.paylinker.api.campaign.dto.response.CampaignDetailResponse;
+import com.paylinker.api.campaign.dto.response.CampaignListResponse;
+import com.paylinker.api.campaign.service.CampaignCancelService;
 import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.dto.request.ManualResendRequest;
 import com.paylinker.api.campaign.dto.request.ReminderRequest;
-import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.campaign.dto.response.ManualResendResponse;
 import com.paylinker.api.campaign.dto.response.ReminderResponse;
 import com.paylinker.api.campaign.service.CampaignService;
@@ -38,6 +40,7 @@ public class CampaignController {
     private final CampaignService campaignService;
     private final CampaignCreateService campaignCreateService;
     private final CampaignUpdateService campaignUpdateService;
+    private final CampaignCancelService campaignCancelService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<CampaignListResponse>> getCampaigns(
@@ -78,6 +81,17 @@ public class CampaignController {
         CampaignDetailResponse responseData = campaignUpdateService.updateCampaign(adminId, campaignId, request);
 
         return ResponseEntity.ok(ApiResponse.ok("캠페인 수정 완료", responseData));
+    }
+
+    @PatchMapping("/{campaignId}/cancel")
+    public ResponseEntity<ApiResponse<CampaignCancelResponse>> cancelCampaign(
+            @PathVariable String campaignId,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignCancelResponse responseData = campaignCancelService.cancelCampaign(adminId, campaignId);
+
+        return ResponseEntity.ok(ApiResponse.ok("캠페인 취소 완료", responseData));
     }
 
     @PostMapping("/{campaignId}/reminders")
