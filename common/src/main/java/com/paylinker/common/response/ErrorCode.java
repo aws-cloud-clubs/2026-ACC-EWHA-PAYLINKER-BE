@@ -17,9 +17,14 @@ public enum ErrorCode {
 
     DOCUMENT_NOT_FOUND(404, "명세서를 찾을 수 없습니다."),
 
-    RECIPIENT_FILE_UNSUPPORTED(400, "지원하지 않는 파일 형식입니다."),
-    RECIPIENT_FILE_TOO_LARGE(413, "업로드 가능한 최대 크기를 초과했습니다."),
+    RECIPIENT_FILE_UNSUPPORTED(400, "지원하지 않는 파일 형식입니다. (.csv 또는 .xlsx 만 허용)"),
+    RECIPIENT_FILE_TOO_LARGE(413, "업로드 가능한 최대 크기(10MB)를 초과했습니다."),
     RECIPIENT_CAMPAIGN_LIMIT_EXCEEDED(409, "캠페인 최대 수신자 수를 초과했습니다."),
+    RECIPIENT_INVALID_UPLOAD_TYPE(400, "uploadType 은 FULL_REPLACE 또는 APPEND 만 허용됩니다."),
+    RECIPIENT_UPLOAD_BATCH_NOT_FOUND(404, "해당 업로드 배치를 찾을 수 없습니다."),
+    RECIPIENT_S3_UPLOAD_FAILED(500, "파일 저장에 실패했습니다."),
+    RECIPIENT_S3_DOWNLOAD_FAILED(500, "검증 결과 파일 조회에 실패했습니다."),
+    RECIPIENT_FILE_PARSE_FAILED(400, "파일 파싱에 실패했습니다. 파일 형식을 확인해주세요."),
 
     RESEND_REQUEST_DUPLICATE(409, "이미 동일한 재전송 요청이 접수되어 있습니다."),
     RESEND_NOT_ALLOWED(422, "이 캠페인은 재전송 요청을 받지 않습니다."),
