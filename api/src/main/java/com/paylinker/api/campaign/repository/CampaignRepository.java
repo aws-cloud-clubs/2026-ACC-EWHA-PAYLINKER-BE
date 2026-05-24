@@ -6,13 +6,15 @@ import com.paylinker.api.entity.PaylinkerCampaignLimit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import lombok.RequiredArgsConstructor;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Expression;
+import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
@@ -23,14 +25,26 @@ import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 
 @Repository
-@RequiredArgsConstructor
 public class CampaignRepository {
 
     private final DynamoDbClient dynamoDbClient;
     private final DynamoDbEnhancedClient enhancedClient;
+    private final String tablePrefix;
+    private final DynamoDbTable<PaylinkerCampaign> table;
+    private final DynamoDbIndex<PaylinkerCampaign> gsi1;
 
-    @Value("${aws.dynamodb.table-prefix}")
-    private String tablePrefix;
+    // 생성자 방식을 겨레님 방식으로 변경, RequiredArgsConstructor 삭제
+    public CampaignRepository(DynamoDbEnhancedClient enhancedClient,
+                              DynamoDbClient dynamoDbClient,
+                              @Value("${aws.dynamodb.table-prefix}") String tablePrefix) {
+        this.dynamoDbClient = dynamoDbClient;
+        this.enhancedClient = enhancedClient;
+        this.tablePrefix = tablePrefix;
+        this.table = enhancedClient.table(
+                tablePrefix + "-campaign",
+                TableSchema.fromBean(PaylinkerCampaign.class));
+        this.gsi1 = table.index(PaylinkerCampaign.INDEX_GSI1);
+    }
 
     private String tableName() {
         return tablePrefix + "-campaign";
@@ -44,17 +58,37 @@ public class CampaignRepository {
         return resp.hasItem() ? Optional.of(resp.item()) : Optional.empty();
     }
 
+        Key key = Key.builder()
+                .partitionValue(PaylinkerCampaign.pk(campaignId))
+                .sortValue(PaylinkerCampaign.SK_METADATA)
+                .build();
+        return Optional.ofNullable(table.getItem(key));
+    }
+
+    public List<PaylinkerCampaign> findRecentByAdminId(String adminId, int limit) {
+        QueryEnhancedRequest request = QueryEnhancedRequest.builder()
+                .queryConditional(QueryConditional.keyEqualTo(
+                        Key.builder().partitionValue(PaylinkerCampaign.gsi1Pk(adminId)).build()))
+                .scanIndexForward(false)
+                .limit(limit)
+                .build();
+        return StreamSupport.stream(gsi1.query(request).spliterator(), false)
+                .flatMap(page -> page.items().stream())
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
     // 테이블 객체를 메서드 내부에서 동적으로 가져오는 Getter 메서드들
     public DynamoDbTable<PaylinkerCampaign> getCampaignTable() {
-        return enhancedClient.table("paylinker_campaign", TableSchema.fromBean(PaylinkerCampaign.class));
+        return enhancedClient.table(tablePrefix + "-campaign", TableSchema.fromBean(PaylinkerCampaign.class));
     }
 
     public DynamoDbTable<PaylinkerCampaignLimit> getLimitTable() {
-        return enhancedClient.table("paylinker_campaign_limit", TableSchema.fromBean(PaylinkerCampaignLimit.class));
+        return enhancedClient.table(tablePrefix + "-campaign_limit", TableSchema.fromBean(PaylinkerCampaignLimit.class));
     }
 
     public DynamoDbTable<PaylinkerAuditLog> getAuditLogTable() {
-        return enhancedClient.table("paylinker_audit_log", TableSchema.fromBean(PaylinkerAuditLog.class));
+        return enhancedClient.table(tablePrefix + "-audit_log", TableSchema.fromBean(PaylinkerAuditLog.class));
     }
 
     public List<PaylinkerCampaign> findAllByAdminId(String adminId) {
