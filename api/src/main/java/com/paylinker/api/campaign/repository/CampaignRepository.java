@@ -59,7 +59,7 @@ public class CampaignRepository {
                 .toList();
     }
 
-    // 이름 중복 검사를 위한 메서드 (필터링 최적화 적용)
+    // 이름 중복 검사를 위한 메서드
     public boolean existsByAdminIdAndCampaignName(String adminId, String campaignName) {
         DynamoDbTable<PaylinkerCampaign> campaignTable =
                 enhancedClient.table("paylinker_campaign", TableSchema.fromBean(PaylinkerCampaign.class));
@@ -100,6 +100,27 @@ public class CampaignRepository {
         TransactWriteItemsEnhancedRequest request = TransactWriteItemsEnhancedRequest.builder()
                 .addPutItem(campaignTable, campaign)
                 .addPutItem(limitTable, limit)
+                .addPutItem(auditLogTable, auditLog)
+                .build();
+
+        enhancedClient.transactWriteItems(request);
+    }
+
+    // 캠페인 단건 조회 (PK 기준)
+    public PaylinkerCampaign findById(String campaignId) {
+        return campaignTable.getItem(r -> r.key(k -> k.partitionValue(PaylinkerCampaign.pk(campaignId)).sortValue(PaylinkerCampaign.sk())));
+    }
+
+    // 캠페인 제한 단건 조회 (PK 기준)
+    public PaylinkerCampaignLimit findLimitById(String campaignId) {
+        return limitTable.getItem(r -> r.key(k -> k.partitionValue(PaylinkerCampaignLimit.pk(campaignId)).sortValue(PaylinkerCampaignLimit.SK_LIMIT)));
+    }
+
+    // 캠페인 수정 트랜잭션 (AuditLog 포함)
+    public void updateCampaignWithTransaction(PaylinkerCampaign campaign, PaylinkerCampaignLimit limit, PaylinkerAuditLog auditLog) {
+        TransactWriteItemsEnhancedRequest request = TransactWriteItemsEnhancedRequest.builder()
+                .addUpdateItem(campaignTable, campaign)
+                .addUpdateItem(limitTable, limit)
                 .addPutItem(auditLogTable, auditLog)
                 .build();
 

@@ -1,7 +1,9 @@
 package com.paylinker.api.campaign.controller;
 
 import com.paylinker.api.campaign.dto.request.CampaignCreateRequest;
+import com.paylinker.api.campaign.dto.request.CampaignUpdateRequest;
 import com.paylinker.api.campaign.dto.response.CampaignCreateResponse;
+import com.paylinker.api.campaign.dto.response.CampaignDetailResponse;
 import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.dto.request.ManualResendRequest;
 import com.paylinker.api.campaign.dto.request.ReminderRequest;
@@ -9,6 +11,7 @@ import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.campaign.dto.response.ManualResendResponse;
 import com.paylinker.api.campaign.dto.response.ReminderResponse;
 import com.paylinker.api.campaign.service.CampaignService;
+import com.paylinker.api.campaign.service.CampaignUpdateService;
 import com.paylinker.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,6 +37,7 @@ public class CampaignController {
 
     private final CampaignService campaignService;
     private final CampaignCreateService campaignCreateService;
+    private final CampaignUpdateService campaignUpdateService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<CampaignListResponse>> getCampaigns(
@@ -64,11 +68,23 @@ public class CampaignController {
         return ResponseEntity.status(201).body(ApiResponse.created("캠페인 생성 완료", responseData));
     }
 
+    @PatchMapping("/{campaignId}")
+    public ResponseEntity<ApiResponse<CampaignDetailResponse>> updateCampaign(
+            @PathVariable String campaignId,
+            @Valid @RequestBody CampaignUpdateRequest request,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignDetailResponse responseData = campaignUpdateService.updateCampaign(adminId, campaignId, request);
+
+        return ResponseEntity.ok(ApiResponse.ok("캠페인 수정 완료", responseData));
+    }
+
     @PostMapping("/{campaignId}/reminders")
     @Operation(
             summary = "미확인 수신자 리마인드 발송 (SND-001)",
             description = "미확인 수신자(전체 또는 선택)에게 리마인드 메일 발송을 요청한다. " +
-                    "캠페인 status는 SENT 또는 PARTIAL_FAILED이어야 한다.")
+                    "캠페인 status는 SENT 또는 PARTIAL_FAILED이어야 단다.")
     public ResponseEntity<ApiResponse<ReminderResponse>> sendReminder(
             @Parameter(description = "캠페인 ID (UUID)", required = true)
             @PathVariable String campaignId,
