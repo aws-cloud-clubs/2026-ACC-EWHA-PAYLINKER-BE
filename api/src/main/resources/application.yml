@@ -1,6 +1,19 @@
 spring:
   application:
     name: paylinker-api
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION:ap-northeast-2}
+  config:
+    import:
+      - optional:aws-secretsmanager:/dev/paylinker/app
+      - optional:aws-secretsmanager:/dev/paylinker/dynamodb
+      - optional:aws-secretsmanager:/dev/paylinker/redis
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
   security:
     oauth2:
       resourceserver:
@@ -26,6 +39,11 @@ management:
     health:
       probes:
         enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState, redis
       show-details: never
 
 aws:
@@ -40,6 +58,9 @@ aws:
     app-client-id: ${COGNITO_APP_CLIENT_ID}
   dynamodb:
     table-prefix: ${DYNAMODB_TABLE_PREFIX:dev-paylinker}
+    campaign-recipient:
+      gsi1-name: ${CAMPAIGN_RECIPIENT_GSI1_NAME:campaign-recipient-gsi1}
+      gsi2-name: ${CAMPAIGN_RECIPIENT_GSI2_NAME:campaign-recipient-gsi2}
   s3:
     document-bucket: ${S3_DOCUMENT_BUCKET}
     upload-bucket: ${S3_UPLOAD_BUCKET}
@@ -50,3 +71,7 @@ paylinker:
     scheduler-lock-ttl-seconds: 50
   scheduler:
     enabled: ${SCHEDULER_ENABLED:true}
+  campaign-limit:
+    max-recipients: ${MAX_RECIPIENTS:5000}
+  upload-batch:
+    file-storage-key: ${UPLOAD_BATCH_FILE_STORAGE_KEY:recipients}
