@@ -1,6 +1,7 @@
 package com.paylinker.api.repository;
 
 import com.paylinker.api.entity.PaylinkerCheckItem;
+import com.paylinker.api.entity.enums.CheckItemStatus;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
@@ -22,22 +23,22 @@ public class CheckItemRepository {
         this.tableName = tablePrefix + "-check-item";
     }
 
-    public int countUnresolved() {
-        return countByStatus(PaylinkerCheckItem.STATUS_OPEN)
-                + countByStatus(PaylinkerCheckItem.STATUS_IN_PROGRESS);
+    public int countUnresolved(String adminId) {
+        return countByAdminAndStatus(adminId, CheckItemStatus.OPEN.name())
+                + countByAdminAndStatus(adminId, CheckItemStatus.IN_PROGRESS.name());
     }
 
-    private int countByStatus(String checkStatus) {
+    private int countByAdminAndStatus(String adminId, String checkStatus) {
         int total = 0;
         Map<String, AttributeValue> exclusiveStartKey = null;
         do {
             QueryRequest.Builder builder = QueryRequest.builder()
                     .tableName(tableName)
-                    .indexName(PaylinkerCheckItem.INDEX_GSI1)
+                    .indexName(PaylinkerCheckItem.INDEX_GSI2)
                     .keyConditionExpression("#pk = :pk")
-                    .expressionAttributeNames(Map.of("#pk", "gsi1_pk"))
+                    .expressionAttributeNames(Map.of("#pk", "GSI2PK"))
                     .expressionAttributeValues(Map.of(
-                            ":pk", AttributeValue.fromS(PaylinkerCheckItem.gsi1Pk(checkStatus))))
+                            ":pk", AttributeValue.fromS(PaylinkerCheckItem.gsi2Pk(adminId, checkStatus))))
                     .select(Select.COUNT);
             if (exclusiveStartKey != null && !exclusiveStartKey.isEmpty()) {
                 builder.exclusiveStartKey(exclusiveStartKey);

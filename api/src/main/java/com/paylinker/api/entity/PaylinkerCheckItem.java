@@ -13,11 +13,13 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortK
 public class PaylinkerCheckItem {
 
     public static final String INDEX_GSI1 = "GSI1";
+    public static final String INDEX_GSI2 = "GSI2";
 
     private String pk;
     private String sk;
     private String checkItemId;
     private String campaignId;
+    private String adminId;
     private String recipientId;
     private CheckItemType itemType;
     private CheckItemStatus checkStatus;
@@ -26,6 +28,8 @@ public class PaylinkerCheckItem {
     private String createdAt;
     private String gsi1Pk;
     private String gsi1Sk;
+    private String gsi2Pk;
+    private String gsi2Sk;
 
     public static String pk(String campaignId) {
         return "CAMPAIGN#" + campaignId;
@@ -37,6 +41,10 @@ public class PaylinkerCheckItem {
 
     public static String gsi1Pk(String checkStatus) {
         return "ST#" + checkStatus;
+    }
+
+    public static String gsi2Pk(String adminId, String checkStatus) {
+        return "ADMIN#" + adminId + "#ST#" + checkStatus;
     }
 
     @DynamoDbPartitionKey
@@ -73,6 +81,15 @@ public class PaylinkerCheckItem {
 
     public void setCampaignId(String campaignId) {
         this.campaignId = campaignId;
+    }
+
+    @DynamoDbAttribute("admin_id")
+    public String getAdminId() {
+        return adminId;
+    }
+
+    public void setAdminId(String adminId) {
+        this.adminId = adminId;
     }
 
     @DynamoDbAttribute("recipient_id")
@@ -147,5 +164,25 @@ public class PaylinkerCheckItem {
 
     public void setGsi1Sk(String gsi1Sk) {
         this.gsi1Sk = gsi1Sk;
+    }
+
+    @DynamoDbAttribute("GSI2PK")
+    @DynamoDbSecondaryPartitionKey(indexNames = INDEX_GSI2)
+    public String getGsi2Pk() {
+        return gsi2Pk;
+    }
+
+    public void setGsi2Pk(String gsi2Pk) {
+        this.gsi2Pk = gsi2Pk;
+    }
+
+    @DynamoDbAttribute("GSI2SK")
+    @DynamoDbSecondarySortKey(indexNames = INDEX_GSI2)
+    public String getGsi2Sk() {
+        return gsi2Sk;
+    }
+
+    public void setGsi2Sk(String gsi2Sk) {
+        this.gsi2Sk = gsi2Sk;
     }
 }

@@ -67,7 +67,7 @@ public class DashboardService {
         int totalFailedCount = campaigns.stream()
                 .mapToInt(c -> nullToZero(c.getSendFailedCount()))
                 .sum();
-        int attentionRequiredCount = checkItemRepository.countUnresolved();
+        int attentionRequiredCount = checkItemRepository.countUnresolved(adminId);
 
         return new DashboardSummaryResponse(
                 totalUnviewedCount,
