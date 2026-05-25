@@ -22,6 +22,11 @@ public enum ErrorCode {
     LINK_SESSION_EXPIRED(401, "세션이 만료되었습니다."),
 
     DOCUMENT_NOT_FOUND(404, "명세서를 찾을 수 없습니다."),
+    DOCUMENT_FILE_UNSUPPORTED(400, "지원하지 않는 파일 형식입니다."),
+    DOCUMENT_MATCH_KEY_MISSING(400, "matchKey 컬럼이 누락되었습니다."),
+    DOCUMENT_RECIPIENTS_NOT_READY(409, "캠페인 수신자가 등록되지 않았습니다."),
+    DOCUMENT_FILE_TOO_LARGE(413, "업로드 가능한 최대 크기(50MB)를 초과했습니다."),
+    DOCUMENT_CAMPAIGN_INVALID_STATUS(422, "명세서 업로드 가능 상태가 아닌 캠페인입니다."),
 
     RECIPIENT_FILE_UNSUPPORTED(400, "지원하지 않는 파일 형식입니다. (.csv 또는 .xlsx 만 허용)"),
     RECIPIENT_FILE_TOO_LARGE(413, "업로드 가능한 최대 크기(10MB)를 초과했습니다."),
