@@ -8,11 +8,12 @@ import com.paylinker.api.entity.PaylinkerCampaignRecipient;
 import com.paylinker.api.entity.PaylinkerDocument;
 import com.paylinker.api.entity.PaylinkerDocumentMatch;
 import com.paylinker.api.entity.PaylinkerUploadBatch;
-import com.paylinker.api.repository.CampaignRecipientRepository;
-import com.paylinker.api.repository.CampaignRepository;
+import com.paylinker.api.entity.enums.DocumentMatchStatus;
+import com.paylinker.api.campaign.repository.CampaignRepository;
+import com.paylinker.api.document.repository.DocumentCampaignRecipientRepository;
+import com.paylinker.api.document.repository.DocumentUploadBatchRepository;
 import com.paylinker.api.repository.DocumentMatchRepository;
 import com.paylinker.api.repository.DocumentRepository;
-import com.paylinker.api.repository.UploadBatchRepository;
 import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
 import java.io.IOException;
@@ -43,16 +44,16 @@ public class DocumentService {
     private static final Set<String> UPLOADABLE_CAMPAIGN_STATUSES = Set.of("DRAFT", "READY");
 
     private final CampaignRepository campaignRepository;
-    private final CampaignRecipientRepository campaignRecipientRepository;
-    private final UploadBatchRepository uploadBatchRepository;
+    private final DocumentCampaignRecipientRepository campaignRecipientRepository;
+    private final DocumentUploadBatchRepository uploadBatchRepository;
     private final DocumentRepository documentRepository;
     private final DocumentMatchRepository documentMatchRepository;
     private final S3UploadService s3UploadService;
     private final ObjectMapper objectMapper;
 
     public DocumentService(CampaignRepository campaignRepository,
-                           CampaignRecipientRepository campaignRecipientRepository,
-                           UploadBatchRepository uploadBatchRepository,
+                           DocumentCampaignRecipientRepository campaignRecipientRepository,
+                           DocumentUploadBatchRepository uploadBatchRepository,
                            DocumentRepository documentRepository,
                            DocumentMatchRepository documentMatchRepository,
                            S3UploadService s3UploadService,
@@ -78,7 +79,8 @@ public class DocumentService {
         if (!adminId.equals(campaign.getAdminId())) {
             throw new CustomException(ErrorCode.CAMPAIGN_FORBIDDEN);
         }
-        if (!UPLOADABLE_CAMPAIGN_STATUSES.contains(campaign.getStatus())) {
+        String campaignStatus = campaign.getStatus() != null ? campaign.getStatus().name() : null;
+        if (!UPLOADABLE_CAMPAIGN_STATUSES.contains(campaignStatus)) {
             throw new CustomException(ErrorCode.DOCUMENT_CAMPAIGN_INVALID_STATUS);
         }
 
@@ -231,7 +233,7 @@ public class DocumentService {
             match.setCampaignRecipientId(recipient.getCampaignRecipientId());
             match.setRecipientId(recipient.getRecipientId());
             match.setDocumentId(documentId);
-            match.setMatchStatus(status);
+            match.setMatchStatus(DocumentMatchStatus.valueOf(status));
             match.setMatchKey(matchKey);
             match.setCreatedAt(now);
             match.setGsi1Pk(PaylinkerDocumentMatch.gsi1Pk(campaignId, status));
