@@ -4,6 +4,7 @@ import com.paylinker.api.dashboard.dto.DashboardCampaignSummaryResponse;
 import com.paylinker.api.dashboard.dto.DashboardFailureResponse;
 import com.paylinker.api.dashboard.dto.DashboardSummaryResponse;
 import com.paylinker.api.dashboard.dto.DashboardUnviewedResponse;
+import com.paylinker.api.dashboard.dto.DashboardViewTrendResponse;
 import com.paylinker.api.dashboard.service.DashboardService;
 import com.paylinker.common.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -55,5 +57,16 @@ public class DashboardController {
         String adminId = authentication.getName();
         DashboardFailureResponse data = dashboardService.getSendFailures(adminId, campaignId);
         return ResponseEntity.ok(ApiResponse.ok("발송 실패 대상자 현황 조회 성공", data));
+    }
+
+    @GetMapping("/campaigns/{campaignId}/view-trend")
+    public ResponseEntity<ApiResponse<DashboardViewTrendResponse>> getViewTrend(
+            @PathVariable String campaignId,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            Authentication authentication) {
+        String adminId = authentication.getName();
+        DashboardViewTrendResponse data = dashboardService.getViewTrend(adminId, campaignId, from, to);
+        return ResponseEntity.ok(ApiResponse.ok("명세서 확인 추이 조회 성공", data));
     }
 }
