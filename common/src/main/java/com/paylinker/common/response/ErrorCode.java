@@ -22,6 +22,11 @@ public enum ErrorCode {
     LINK_SESSION_EXPIRED(401, "세션이 만료되었습니다."),
 
     DOCUMENT_NOT_FOUND(404, "명세서를 찾을 수 없습니다."),
+    DOCUMENT_FILE_UNSUPPORTED(400, "지원하지 않는 파일 형식입니다."),
+    DOCUMENT_MATCH_KEY_MISSING(400, "matchKey 컬럼이 누락되었습니다."),
+    DOCUMENT_RECIPIENTS_NOT_READY(409, "캠페인 수신자가 등록되지 않았습니다."),
+    DOCUMENT_FILE_TOO_LARGE(413, "업로드 가능한 최대 크기(50MB)를 초과했습니다."),
+    DOCUMENT_CAMPAIGN_INVALID_STATUS(422, "명세서 업로드 가능 상태가 아닌 캠페인입니다."),
 
     RECIPIENT_FILE_UNSUPPORTED(400, "지원하지 않는 파일 형식입니다. (.csv 또는 .xlsx 만 허용)"),
     RECIPIENT_FILE_TOO_LARGE(413, "업로드 가능한 최대 크기(10MB)를 초과했습니다."),
@@ -39,6 +44,8 @@ public enum ErrorCode {
     RESEND_REQUEST_ALREADY_PROCESSED(409, "이미 처리된 재전송 요청입니다."),
 
     INVALID_PAGINATION(400, "페이지 번호는 1 이상, 페이지 크기는 1~50 이어야 합니다."),
+    INVALID_TIME_PARAMETER(400, "시간 파라미터 형식이 잘못되었습니다. ISO-8601 (예: 2026-05-01T00:00:00Z) 형식으로 보내주세요."),
+
     REMINDER_NOT_ALLOWED(422, "발송이 완료되지 않은 캠페인에는 리마인드를 보낼 수 없습니다."),
     REMINDER_NO_TARGET(400, "리마인드 발송 대상이 없습니다."),
     REMINDER_SELECTED_REQUIRED(400, "SELECTED 대상 지정 시 campaignRecipientIds는 1개 이상이어야 합니다."),

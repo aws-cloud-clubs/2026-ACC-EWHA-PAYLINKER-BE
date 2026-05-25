@@ -6,8 +6,8 @@ import com.paylinker.api.entity.PaylinkerAuditLog;
 import com.paylinker.api.entity.PaylinkerCampaign;
 import com.paylinker.api.entity.enums.CampaignStatus;
 import com.paylinker.api.campaign.repository.CampaignRepository;
-// import com.paylinker.api.repository.DocumentMatchRepository; // TODO: #12 브랜치 머지 후 복구
-// import com.paylinker.api.entity.PaylinkerDocumentMatch; // TODO: #12 브랜치 머지 후 복구
+import com.paylinker.api.repository.DocumentMatchRepository;
+import com.paylinker.api.entity.PaylinkerDocumentMatch;
 import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
 import org.springframework.stereotype.Service;
@@ -27,13 +27,12 @@ import java.util.UUID;
 public class CampaignScheduleService {
 
     private final CampaignRepository campaignRepository;
-    // private final DocumentMatchRepository documentMatchRepository; // TODO: #12 브랜치 머지 후 복구
+    private final DocumentMatchRepository documentMatchRepository;
 
-    public CampaignScheduleService(CampaignRepository campaignRepository
-                                   // , DocumentMatchRepository documentMatchRepository // TODO: #12 브랜치 머지 후 복구
-    ) {
+    public CampaignScheduleService(CampaignRepository campaignRepository,
+                                   DocumentMatchRepository documentMatchRepository) {
         this.campaignRepository = campaignRepository;
-        // this.documentMatchRepository = documentMatchRepository;
+        this.documentMatchRepository = documentMatchRepository;
     }
 
     public CampaignScheduleResponse scheduleCampaign(String adminId, String campaignId, CampaignScheduleRequest request) {
@@ -62,14 +61,10 @@ public class CampaignScheduleService {
         if (request.scheduledSendAt() != null && !request.scheduledSendAt().isBlank()) {
             // [예약 설정]
             // 3-1. 사전 조건 검증: 수신자/명세서 매칭 완료 여부 (SND-003 기반 검증)
-            // TODO: #12 브랜치 머지 후 아래 주석 해제 및 복구
-            // int unmatchedCount = documentMatchRepository.countByStatus(campaignId, PaylinkerDocumentMatch.STATUS_UNMATCHED);
-            // int duplicateCount = documentMatchRepository.countByStatus(campaignId, PaylinkerDocumentMatch.STATUS_DUPLICATE_MATCH);
-            int unmatchedCount = 0;
-            int duplicateCount = 0;
+            int unmatchedCount = documentMatchRepository.countByStatus(campaignId, PaylinkerDocumentMatch.STATUS_UNMATCHED);
+            int duplicateCount = documentMatchRepository.countByStatus(campaignId, PaylinkerDocumentMatch.STATUS_DUPLICATE_MATCH);
             int totalRecipientCount = campaign.getTotalRecipientCount() != null ? campaign.getTotalRecipientCount() : 0;
 
-            // 임시로 수신자 수가 0명일 때만 에러를 던지도록 동작 (추후 복구 필요)
             if (unmatchedCount > 0 || duplicateCount > 0 || totalRecipientCount == 0) {
                 throw new CustomException(ErrorCode.CAMPAIGN_NOT_READY);
             }
