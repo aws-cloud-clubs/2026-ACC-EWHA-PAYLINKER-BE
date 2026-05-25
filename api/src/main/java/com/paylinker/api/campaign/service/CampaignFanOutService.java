@@ -1,5 +1,8 @@
 package com.paylinker.api.campaign.service;
 
+import com.paylinker.api.entity.PaylinkerCampaign;
+import com.paylinker.api.entity.enums.CampaignStatus;
+import com.paylinker.api.campaign.repository.CampaignRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -19,13 +22,16 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.PutRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequestEntry;
+import software.amazon.awssdk.services.sqs.model.SendMessageBatchResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Slf4j
@@ -36,6 +42,7 @@ public class CampaignFanOutService {
     private final DynamoDbClient dynamoDbClient;
     private final SqsClient sqsClient;
     private final ObjectMapper objectMapper;
+    private final CampaignRepository campaignRepository; // 상태 롤백을 위해 추가
 
     @Value("${aws.dynamodb.table-prefix}")
     private String tablePrefix;
@@ -88,7 +95,17 @@ public class CampaignFanOutService {
 
         } catch (Exception e) {
             log.error("[FanOut Failed] CampaignId: {}", campaignId, e);
-            // TODO: 실패 시 별도의 알림(DLQ 등) 처리 로직 추가 가능
+            // FanOut 실패 시 캠페인 상태를 PARTIAL_FAILED로 롤백
+            try {
+                PaylinkerCampaign campaign = campaignRepository.findCampaignById(campaignId);
+                if (campaign != null) {
+                    campaign.setStatus(CampaignStatus.PARTIAL_FAILED);
+                    campaignRepository.getCampaignTable().updateItem(campaign);
+                    log.info("[FanOut Rollback] CampaignId: {} 상태를 PARTIAL_FAILED로 변경 완료", campaignId);
+                }
+            } catch (Exception rollbackEx) {
+                log.error("[FanOut Rollback Failed] CampaignId: {} 상태 롤백 실패", campaignId, rollbackEx);
+            }
         }
     }
 
@@ -104,9 +121,9 @@ public class CampaignFanOutService {
             String plainToken = UUID.randomUUID().toString().replace("-", "");
             String hashedToken = sha256(plainToken);
 
-            // Deterministic ID 생성: 캠페인ID + 수신자ID 조합으로 해시 생성 (멱등성 보장)
+            // 해시 충돌 방지를 위해 자르지 않고 전체 64자 사용
             String combinedKey = campaignId + "_" + recipientId;
-            String deterministicHash = sha256(combinedKey).substring(0, 16);
+            String deterministicHash = sha256(combinedKey);
             String secureLinkId = "sl_" + deterministicHash;
             String sendJobId = "sj_" + deterministicHash;
 
@@ -152,22 +169,65 @@ public class CampaignFanOutService {
         executeSqsBatchSend(sqsEntries, 10);
     }
 
+    // DynamoDB unprocessedItems 재시도 로직 추가
     private void executeDynamoBatchWrite(String tableName, List<WriteRequest> writes, int batchSize) {
         for (int i = 0; i < writes.size(); i += batchSize) {
             List<WriteRequest> batch = writes.subList(i, Math.min(i + batchSize, writes.size()));
-            dynamoDbClient.batchWriteItem(BatchWriteItemRequest.builder()
-                    .requestItems(Map.of(tableName, batch))
-                    .build());
+            Map<String, List<WriteRequest>> requestItems = Map.of(tableName, batch);
+
+            int retries = 0;
+            while (requestItems != null && retries < 3) {
+                BatchWriteItemResponse response = dynamoDbClient.batchWriteItem(BatchWriteItemRequest.builder()
+                        .requestItems(requestItems)
+                        .build());
+
+                if (response.hasUnprocessedItems() && !response.unprocessedItems().isEmpty()) {
+                    requestItems = response.unprocessedItems();
+                    retries++;
+                    try { Thread.sleep(100L * retries); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
+                } else {
+                    requestItems = null; // 성공
+                }
+            }
+
+            if (requestItems != null) {
+                throw new RuntimeException("DynamoDB BatchWriteItem 재시도 실패 - Table: " + tableName);
+            }
         }
     }
 
+    // SQS Failed 응답 재시도 로직 추가
     private void executeSqsBatchSend(List<SendMessageBatchRequestEntry> entries, int batchSize) {
         for (int i = 0; i < entries.size(); i += batchSize) {
             List<SendMessageBatchRequestEntry> batch = entries.subList(i, Math.min(i + batchSize, entries.size()));
-            sqsClient.sendMessageBatch(SendMessageBatchRequest.builder()
-                    .queueUrl(sqsQueueUrl)
-                    .entries(batch)
-                    .build());
+
+            int retries = 0;
+            while (!batch.isEmpty() && retries < 3) {
+                SendMessageBatchResponse response = sqsClient.sendMessageBatch(SendMessageBatchRequest.builder()
+                        .queueUrl(sqsQueueUrl)
+                        .entries(batch)
+                        .build());
+
+                if (response.hasFailed() && !response.failed().isEmpty()) {
+                    List<SendMessageBatchRequestEntry> retryBatch = new ArrayList<>();
+                    for (SendMessageBatchRequestEntry entry : batch) {
+                        for (BatchResultErrorEntry error : response.failed()) {
+                            if (entry.id().equals(error.id())) {
+                                retryBatch.add(entry);
+                            }
+                        }
+                    }
+                    batch = retryBatch;
+                    retries++;
+                    try { Thread.sleep(100L * retries); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
+                } else {
+                    batch = new ArrayList<>(); // 성공
+                }
+            }
+
+            if (!batch.isEmpty()) {
+                throw new RuntimeException("SQS SendMessageBatch 재시도 실패");
+            }
         }
     }
 
