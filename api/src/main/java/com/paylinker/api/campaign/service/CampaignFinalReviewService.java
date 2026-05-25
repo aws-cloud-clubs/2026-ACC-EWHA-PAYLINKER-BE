@@ -2,9 +2,10 @@ package com.paylinker.api.campaign.service;
 
 import com.paylinker.api.campaign.dto.response.CampaignFinalReviewResponse;
 import com.paylinker.api.entity.PaylinkerCampaign;
+import com.paylinker.api.entity.PaylinkerDocumentMatch;
 import com.paylinker.api.entity.enums.CampaignStatus;
 import com.paylinker.api.campaign.repository.CampaignRepository;
-// import com.paylinker.api.repository.DocumentMatchRepository; // TODO: #12 브랜치 머지 후 복구
+import com.paylinker.api.repository.DocumentMatchRepository;
 import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
 import org.springframework.stereotype.Service;
@@ -16,13 +17,12 @@ import java.util.List;
 public class CampaignFinalReviewService {
 
     private final CampaignRepository campaignRepository;
-    // private final DocumentMatchRepository documentMatchRepository; // TODO: #12 브랜치 머지 후 복구
+    private final DocumentMatchRepository documentMatchRepository;
 
-    public CampaignFinalReviewService(CampaignRepository campaignRepository
-                                      // , DocumentMatchRepository documentMatchRepository // TODO: #12 브랜치 머지 후 복구
-    ) {
+    public CampaignFinalReviewService(CampaignRepository campaignRepository,
+                                      DocumentMatchRepository documentMatchRepository) {
         this.campaignRepository = campaignRepository;
-        // this.documentMatchRepository = documentMatchRepository;
+        this.documentMatchRepository = documentMatchRepository;
     }
 
     public CampaignFinalReviewResponse getFinalReviewInfo(String adminId, String campaignId) {
@@ -37,10 +37,10 @@ public class CampaignFinalReviewService {
             throw new CustomException(ErrorCode.CAMPAIGN_FORBIDDEN);
         }
 
-        // 3. 임시로 카운트를 0으로 설정 (TODO: #12 브랜치 머지 후 실제 로직으로 복구)
-        int matchedCount = 0;
-        int unmatchedRecipientCount = 0;
-        int duplicateMatchCount = 0;
+        // 3. DocumentMatchRepository를 이용해 실제 상태별 카운트 조회
+        int matchedCount = documentMatchRepository.countByStatus(campaignId, PaylinkerDocumentMatch.STATUS_MATCHED);
+        int unmatchedRecipientCount = documentMatchRepository.countByStatus(campaignId, PaylinkerDocumentMatch.STATUS_UNMATCHED);
+        int duplicateMatchCount = documentMatchRepository.countByStatus(campaignId, PaylinkerDocumentMatch.STATUS_DUPLICATE_MATCH);
 
         int totalRecipientCount = campaign.getTotalRecipientCount() != null ? campaign.getTotalRecipientCount() : 0;
         CampaignStatus status = campaign.getStatus();
