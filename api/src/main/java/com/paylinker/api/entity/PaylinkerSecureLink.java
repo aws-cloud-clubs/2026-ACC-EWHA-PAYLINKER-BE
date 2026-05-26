@@ -42,7 +42,6 @@ public class PaylinkerSecureLink {
     }
 
     @DynamoDbAttribute("PK")
-
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -53,7 +52,6 @@ public class PaylinkerSecureLink {
     }
 
     @DynamoDbAttribute("SK")
-
     @DynamoDbSortKey
     public String getSk() {
         return sk;

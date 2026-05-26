@@ -30,7 +30,6 @@ public class PaylinkerLinkAccessLog {
     }
 
     @DynamoDbAttribute("PK")
-
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -41,7 +40,6 @@ public class PaylinkerLinkAccessLog {
     }
 
     @DynamoDbAttribute("SK")
-
     @DynamoDbSortKey
     public String getSk() {
         return sk;

@@ -37,7 +37,6 @@ public class PaylinkerViewEvent {
     }
 
     @DynamoDbAttribute("PK")
-
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -48,7 +47,6 @@ public class PaylinkerViewEvent {
     }
 
     @DynamoDbAttribute("SK")
-
     @DynamoDbSortKey
     public String getSk() {
         return sk;

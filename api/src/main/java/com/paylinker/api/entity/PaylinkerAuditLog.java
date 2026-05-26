@@ -45,7 +45,6 @@ public class PaylinkerAuditLog {
     }
 
     @DynamoDbAttribute("PK")
-
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -56,7 +55,6 @@ public class PaylinkerAuditLog {
     }
 
     @DynamoDbAttribute("SK")
-
     @DynamoDbSortKey
     public String getSk() {
         return sk;

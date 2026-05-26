@@ -29,7 +29,6 @@ public class PaylinkerRecipient {
     }
 
     @DynamoDbAttribute("PK")
-
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -40,7 +39,6 @@ public class PaylinkerRecipient {
     }
 
     @DynamoDbAttribute("SK")
-
     @DynamoDbSortKey
     public String getSk() {
         return sk;
