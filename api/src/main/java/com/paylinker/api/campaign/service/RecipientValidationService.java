@@ -36,7 +36,7 @@ public class RecipientValidationService {
         // 캠페인 존재 및 소유자 검증
         Map<String, AttributeValue> campaign = campaignRepository.findById(campaignId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND));
-        String createdBy = campaign.getOrDefault("created_by", AttributeValue.fromS("")).s();
+        String createdBy = campaign.getOrDefault("admin_id", AttributeValue.fromS("")).s();
         if (!adminId.equals(createdBy)) {
             throw new CustomException(ErrorCode.CAMPAIGN_FORBIDDEN);
         }

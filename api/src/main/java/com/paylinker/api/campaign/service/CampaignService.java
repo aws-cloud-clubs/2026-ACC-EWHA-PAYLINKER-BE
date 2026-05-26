@@ -312,7 +312,7 @@ public class CampaignService {
     private void validateCampaignOwnership(String campaignId, String requesterId) {
         Map<String, AttributeValue> campaign = campaignRepository.findById(campaignId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND));
-        String ownerId = str(campaign, "owner_id");
+        String ownerId = str(campaign, "admin_id");
         if (ownerId != null && !ownerId.equals(requesterId)) {
             throw new CustomException(ErrorCode.CAMPAIGN_FORBIDDEN);
         }
@@ -322,7 +322,7 @@ public class CampaignService {
     private void validateCampaignAccess(String campaignId, String requesterId, ErrorCode statusCode) {
         Map<String, AttributeValue> campaign = campaignRepository.findById(campaignId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CAMPAIGN_NOT_FOUND));
-        String ownerId = str(campaign, "owner_id");
+        String ownerId = str(campaign, "admin_id");
         if (ownerId != null && !ownerId.equals(requesterId)) {
             throw new CustomException(ErrorCode.CAMPAIGN_FORBIDDEN);
         }
