@@ -53,7 +53,9 @@ public class CampaignRepository {
     public Optional<Map<String, AttributeValue>> findById(String campaignId) {
         GetItemResponse resp = dynamoDbClient.getItem(GetItemRequest.builder()
                 .tableName(tableName())
-                .key(Map.of("campaign_id", AttributeValue.fromS(campaignId)))
+                .key(Map.of(
+                        "PK", AttributeValue.fromS(PaylinkerCampaign.pk(campaignId)),
+                        "SK", AttributeValue.fromS(PaylinkerCampaign.sk())))
                 .build());
         return resp.hasItem() ? Optional.of(resp.item()) : Optional.empty();
     }
