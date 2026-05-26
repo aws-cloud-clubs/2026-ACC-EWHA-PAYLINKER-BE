@@ -54,6 +54,7 @@ public class CampaignService {
     private static final Set<String> ALLOWED_STATUSES = Set.of("SENT", "PARTIAL_FAILED");
     private static final List<String> DEFAULT_PERMANENT_FAILURE_REASONS =
             List.of("INVALID_EMAIL", "BLOCKED", "COMPLAINT");
+    private static final int BOUNCED_RETRY_LIMIT = 3;
 
     private final CampaignRepository campaignRepository;
     private final CampaignRecipientRepository campaignRecipientRepository;
@@ -505,7 +506,14 @@ public class CampaignService {
     private boolean isPermanentFailure(Map<String, AttributeValue> recipient,
                                        List<String> excludeReasons) {
         String reason = str(recipient, "send_failure_reason");
-        return reason != null && excludeReasons.contains(reason);
+        if (reason == null) return false;
+        if (excludeReasons.contains(reason)) return true;
+        // D-1: BOUNCED 는 retry_count >= 3 도달 시 영구 실패로 격상
+        if ("BOUNCED".equals(reason)) {
+            Integer retryCount = num(recipient, "retry_count");
+            return retryCount != null && retryCount >= BOUNCED_RETRY_LIMIT;
+        }
+        return false;
     }
 
     private int nullSafeCompare(String a, String b) {
