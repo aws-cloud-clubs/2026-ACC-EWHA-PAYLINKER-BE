@@ -49,6 +49,8 @@ public class PaylinkerSendJob {
         return "SES#" + sesMessageId;
     }
 
+    @DynamoDbAttribute("PK")
+
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -57,6 +59,8 @@ public class PaylinkerSendJob {
     public void setPk(String pk) {
         this.pk = pk;
     }
+
+    @DynamoDbAttribute("SK")
 
     @DynamoDbSortKey
     public String getSk() {

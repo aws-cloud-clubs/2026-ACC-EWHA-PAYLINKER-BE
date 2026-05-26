@@ -29,6 +29,8 @@ public class PaylinkerLinkAccessLog {
         return "ACC#" + accessedAt + "#" + ulid;
     }
 
+    @DynamoDbAttribute("PK")
+
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -37,6 +39,8 @@ public class PaylinkerLinkAccessLog {
     public void setPk(String pk) {
         this.pk = pk;
     }
+
+    @DynamoDbAttribute("SK")
 
     @DynamoDbSortKey
     public String getSk() {

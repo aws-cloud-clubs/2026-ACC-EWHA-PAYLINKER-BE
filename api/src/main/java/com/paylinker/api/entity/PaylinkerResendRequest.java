@@ -48,6 +48,8 @@ public class PaylinkerResendRequest {
         return "RCP#" + recipientId;
     }
 
+    @DynamoDbAttribute("PK")
+
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -56,6 +58,8 @@ public class PaylinkerResendRequest {
     public void setPk(String pk) {
         this.pk = pk;
     }
+
+    @DynamoDbAttribute("SK")
 
     @DynamoDbSortKey
     public String getSk() {

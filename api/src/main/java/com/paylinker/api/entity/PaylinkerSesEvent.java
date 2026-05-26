@@ -43,6 +43,8 @@ public class PaylinkerSesEvent {
         return "CAMPAIGN#" + campaignId + "#ET#" + eventType;
     }
 
+    @DynamoDbAttribute("PK")
+
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -51,6 +53,8 @@ public class PaylinkerSesEvent {
     public void setPk(String pk) {
         this.pk = pk;
     }
+
+    @DynamoDbAttribute("SK")
 
     @DynamoDbSortKey
     public String getSk() {
