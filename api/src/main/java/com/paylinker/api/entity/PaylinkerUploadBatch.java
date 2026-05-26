@@ -31,6 +31,7 @@ public class PaylinkerUploadBatch {
         return "UPLOAD#" + uploadBatchId;
     }
 
+    @DynamoDbAttribute("PK")
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -40,6 +41,7 @@ public class PaylinkerUploadBatch {
         this.pk = pk;
     }
 
+    @DynamoDbAttribute("SK")
     @DynamoDbSortKey
     public String getSk() {
         return sk;

@@ -41,6 +41,7 @@ public class PaylinkerSecureLink {
         return "CR#" + campaignRecipientId;
     }
 
+    @DynamoDbAttribute("PK")
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -50,6 +51,7 @@ public class PaylinkerSecureLink {
         this.pk = pk;
     }
 
+    @DynamoDbAttribute("SK")
     @DynamoDbSortKey
     public String getSk() {
         return sk;

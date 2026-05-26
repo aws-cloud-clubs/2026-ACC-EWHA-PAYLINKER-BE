@@ -47,6 +47,7 @@ public class PaylinkerCheckItem {
         return "ADMIN#" + adminId + "#ST#" + checkStatus;
     }
 
+    @DynamoDbAttribute("PK")
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -56,6 +57,7 @@ public class PaylinkerCheckItem {
         this.pk = pk;
     }
 
+    @DynamoDbAttribute("SK")
     @DynamoDbSortKey
     public String getSk() {
         return sk;

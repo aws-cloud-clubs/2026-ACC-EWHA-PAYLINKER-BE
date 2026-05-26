@@ -20,11 +20,13 @@ public class PaylinkerCampaignLimit {
 
     public static String pk(String campaignId) { return "CAMPAIGN#" + campaignId; }
 
+    @DynamoDbAttribute("PK")
     @DynamoDbPartitionKey
     public String getPk() { return pk; }
 
     public void setPk(String pk) { this.pk = pk; }
 
+    @DynamoDbAttribute("SK")
     @DynamoDbSortKey
     public String getSk() { return sk; }
 

@@ -34,6 +34,7 @@ public class PaylinkerDocument {
         return "CAMPAIGN#" + campaignId + "#OWNER#" + ownerKey;
     }
 
+    @DynamoDbAttribute("PK")
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -43,6 +44,7 @@ public class PaylinkerDocument {
         this.pk = pk;
     }
 
+    @DynamoDbAttribute("SK")
     @DynamoDbSortKey
     public String getSk() {
         return sk;

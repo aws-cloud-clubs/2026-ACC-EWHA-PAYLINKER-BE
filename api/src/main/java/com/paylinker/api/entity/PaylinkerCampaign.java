@@ -51,6 +51,7 @@ public class PaylinkerCampaign {
         return "ADMIN#" + adminId;
     }
 
+    @DynamoDbAttribute("PK")
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -60,6 +61,7 @@ public class PaylinkerCampaign {
         this.pk = pk;
     }
 
+    @DynamoDbAttribute("SK")
     @DynamoDbSortKey
     public String getSk() {
         return sk;

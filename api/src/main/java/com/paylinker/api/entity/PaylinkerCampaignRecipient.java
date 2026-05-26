@@ -60,6 +60,7 @@ public class PaylinkerCampaignRecipient {
         return "CAMPAIGN#" + campaignId + "#VW#" + viewedFlag;
     }
 
+    @DynamoDbAttribute("PK")
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -69,6 +70,7 @@ public class PaylinkerCampaignRecipient {
         this.pk = pk;
     }
 
+    @DynamoDbAttribute("SK")
     @DynamoDbSortKey
     public String getSk() {
         return sk;

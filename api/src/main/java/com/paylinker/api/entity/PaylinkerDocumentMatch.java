@@ -40,6 +40,7 @@ public class PaylinkerDocumentMatch {
         return "CAMPAIGN#" + campaignId + "#MST#" + matchStatus;
     }
 
+    @DynamoDbAttribute("PK")
     @DynamoDbPartitionKey
     public String getPk() {
         return pk;
@@ -49,6 +50,7 @@ public class PaylinkerDocumentMatch {
         this.pk = pk;
     }
 
+    @DynamoDbAttribute("SK")
     @DynamoDbSortKey
     public String getSk() {
         return sk;
