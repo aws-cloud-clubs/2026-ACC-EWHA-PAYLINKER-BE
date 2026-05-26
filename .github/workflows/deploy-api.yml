@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+  workflow_dispatch:
 
 permissions:
   id-token: write # AWS OIDC 인증을 위해 필수
