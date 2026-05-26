@@ -59,8 +59,8 @@ aws:
   dynamodb:
     table-prefix: ${DYNAMODB_TABLE_PREFIX:dev-paylinker}
     campaign-recipient:
-      gsi1-name: ${CAMPAIGN_RECIPIENT_GSI1_NAME:campaign-recipient-gsi1}
-      gsi2-name: ${CAMPAIGN_RECIPIENT_GSI2_NAME:campaign-recipient-gsi2}
+      gsi1-name: ${CAMPAIGN_RECIPIENT_GSI1_NAME:GSI1}
+      gsi2-name: ${CAMPAIGN_RECIPIENT_GSI2_NAME:GSI2}
   s3:
     document-bucket: ${S3_DOCUMENT_BUCKET}
     upload-bucket: ${S3_UPLOAD_BUCKET}

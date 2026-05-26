@@ -68,10 +68,10 @@ public class CampaignRecipientRepository {
         List<Map<String, AttributeValue>> results = new ArrayList<>();
         QueryRequest req = QueryRequest.builder()
                 .tableName(tableName())
-                .indexName("campaign-index")
-                .keyConditionExpression("pk = :pk")
+                .keyConditionExpression("#pk = :pk")
+                .expressionAttributeNames(Map.of("#pk", "PK"))
                 .expressionAttributeValues(Map.of(
-                        ":pk", AttributeValue.fromS("CAMPAIGN#" + campaignId)))
+                        ":pk", AttributeValue.fromS(PaylinkerCampaignRecipient.pk(campaignId))))
                 .build();
         QueryResponse resp;
         do {

@@ -9,8 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
@@ -31,11 +31,14 @@ public class ResendRequestRepository {
     }
 
     public Optional<Map<String, AttributeValue>> findById(String requestId) {
-        GetItemResponse resp = dynamoDbClient.getItem(GetItemRequest.builder()
+        QueryResponse resp = dynamoDbClient.query(QueryRequest.builder()
                 .tableName(tableName())
-                .key(Map.of("request_id", AttributeValue.fromS(requestId)))
+                .indexName("GSI3")
+                .keyConditionExpression("request_id = :requestId")
+                .expressionAttributeValues(Map.of(":requestId", AttributeValue.fromS(requestId)))
+                .limit(1)
                 .build());
-        return resp.hasItem() ? Optional.of(resp.item()) : Optional.empty();
+        return resp.items().stream().findFirst();
     }
 
     public List<Map<String, AttributeValue>> findAll() {
