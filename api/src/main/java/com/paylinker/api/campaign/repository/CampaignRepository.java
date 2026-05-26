@@ -85,11 +85,11 @@ public class CampaignRepository {
     }
 
     public DynamoDbTable<PaylinkerCampaignLimit> getLimitTable() {
-        return enhancedClient.table(tablePrefix + "-campaign_limit", TableSchema.fromBean(PaylinkerCampaignLimit.class));
+        return enhancedClient.table(tablePrefix + "-campaign-limit", TableSchema.fromBean(PaylinkerCampaignLimit.class));
     }
 
     public DynamoDbTable<PaylinkerAuditLog> getAuditLogTable() {
-        return enhancedClient.table(tablePrefix + "-audit_log", TableSchema.fromBean(PaylinkerAuditLog.class));
+        return enhancedClient.table(tablePrefix + "-audit-log", TableSchema.fromBean(PaylinkerAuditLog.class));
     }
 
     public List<PaylinkerCampaign> findAllByAdminId(String adminId) {
