@@ -6,6 +6,7 @@ import com.paylinker.api.campaign.dto.response.RecipientValidationErrorItem;
 import com.paylinker.api.campaign.repository.CampaignRecipientRepository;
 import com.paylinker.api.campaign.repository.CampaignRepository;
 import com.paylinker.api.campaign.repository.UploadBatchRepository;
+import com.paylinker.api.entity.PaylinkerCampaignRecipient;
 import com.paylinker.common.response.CustomException;
 import com.paylinker.common.response.ErrorCode;
 import java.io.ByteArrayInputStream;
@@ -291,15 +292,32 @@ public class CampaignRecipientService {
                                                                 String campaignId, String uploadBatchId) {
         String now = Instant.now().toString();
         return rows.stream()
-                .map(r -> Map.of(
-                        "campaign_id",    AttributeValue.fromS(campaignId),
-                        "employee_no",    AttributeValue.fromS(r.employeeNo()),
-                        "name",           AttributeValue.fromS(r.name()),
-                        "department",     AttributeValue.fromS(r.department()),
-                        "email",          AttributeValue.fromS(r.email()),
-                        "upload_batch_id",AttributeValue.fromS(uploadBatchId),
-                        "created_at",     AttributeValue.fromS(now)
-                ))
+                .map(r -> {
+                    String recipientId = UUID.randomUUID().toString();
+                    String sendStatus = "PENDING";
+                    String viewedFlag = PaylinkerCampaignRecipient.VIEWED_FALSE;
+                    Map<String, AttributeValue> item = new HashMap<>();
+                    item.put("PK", AttributeValue.fromS(PaylinkerCampaignRecipient.pk(campaignId)));
+                    item.put("SK", AttributeValue.fromS(PaylinkerCampaignRecipient.sk(recipientId)));
+                    item.put("campaign_recipient_id", AttributeValue.fromS(recipientId));
+                    item.put("recipient_id", AttributeValue.fromS(recipientId));
+                    item.put("campaign_id", AttributeValue.fromS(campaignId));
+                    item.put("employee_no", AttributeValue.fromS(r.employeeNo()));
+                    item.put("name", AttributeValue.fromS(r.name()));
+                    item.put("department", AttributeValue.fromS(r.department()));
+                    item.put("email", AttributeValue.fromS(r.email()));
+                    item.put("upload_batch_id", AttributeValue.fromS(uploadBatchId));
+                    item.put("send_status", AttributeValue.fromS(sendStatus));
+                    item.put("is_viewed", AttributeValue.fromBool(false));
+                    item.put("created_at", AttributeValue.fromS(now));
+                    item.put("GSI1PK", AttributeValue.fromS(
+                            PaylinkerCampaignRecipient.gsi1Pk(campaignId, sendStatus)));
+                    item.put("GSI1SK", AttributeValue.fromS(now));
+                    item.put("GSI2PK", AttributeValue.fromS(
+                            PaylinkerCampaignRecipient.gsi2Pk(campaignId, viewedFlag)));
+                    item.put("GSI2SK", AttributeValue.fromS(now));
+                    return item;
+                })
                 .toList();
     }
 
