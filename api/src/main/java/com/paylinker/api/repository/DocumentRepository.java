@@ -43,7 +43,7 @@ public class DocumentRepository {
             QueryRequest.Builder builder = QueryRequest.builder()
                     .tableName(tableName)
                     .keyConditionExpression("#pk = :pk")
-                    .expressionAttributeNames(Map.of("#pk", "pk"))
+                    .expressionAttributeNames(Map.of("#pk", "PK"))
                     .expressionAttributeValues(Map.of(":pk", AttributeValue.fromS(PaylinkerDocument.pk(campaignId))))
                     .select(Select.COUNT);
             if (exclusiveStartKey != null && !exclusiveStartKey.isEmpty()) {

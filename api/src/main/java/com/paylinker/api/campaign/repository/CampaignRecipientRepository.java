@@ -90,9 +90,11 @@ public class CampaignRecipientRepository {
         do {
             QueryRequest.Builder reqBuilder = QueryRequest.builder()
                     .tableName(tableName())
-                    .keyConditionExpression("campaign_id = :cid")
-                    .expressionAttributeValues(Map.of(":cid", AttributeValue.fromS(campaignId)))
-                    .projectionExpression("campaign_id, employee_no");
+                    .keyConditionExpression("#pk = :pk")
+                    .expressionAttributeNames(Map.of("#pk", "PK"))
+                    .expressionAttributeValues(Map.of(
+                            ":pk", AttributeValue.fromS(PaylinkerCampaignRecipient.pk(campaignId))))
+                    .projectionExpression("PK, SK");
             if (lastKey != null) reqBuilder.exclusiveStartKey(lastKey);
 
             QueryResponse resp = dynamoDbClient.query(reqBuilder.build());
@@ -104,8 +106,8 @@ public class CampaignRecipientRepository {
             List<WriteRequest> deletes = batch.stream()
                     .map(k -> WriteRequest.builder()
                             .deleteRequest(DeleteRequest.builder().key(Map.of(
-                                    "campaign_id", k.get("campaign_id"),
-                                    "employee_no", k.get("employee_no"))).build())
+                                    "PK", k.get("PK"),
+                                    "SK", k.get("SK"))).build())
                             .build())
                     .collect(Collectors.toList());
             dynamoDbClient.batchWriteItem(BatchWriteItemRequest.builder()
