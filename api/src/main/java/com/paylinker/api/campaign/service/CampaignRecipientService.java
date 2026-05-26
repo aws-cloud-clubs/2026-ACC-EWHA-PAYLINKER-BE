@@ -294,7 +294,7 @@ public class CampaignRecipientService {
         return rows.stream()
                 .map(r -> {
                     String recipientId = UUID.randomUUID().toString();
-                    String sendStatus = "PENDING";
+                    String sendStatus = "QUEUED";
                     String viewedFlag = PaylinkerCampaignRecipient.VIEWED_FALSE;
                     Map<String, AttributeValue> item = new HashMap<>();
                     item.put("PK", AttributeValue.fromS(PaylinkerCampaignRecipient.pk(campaignId)));
