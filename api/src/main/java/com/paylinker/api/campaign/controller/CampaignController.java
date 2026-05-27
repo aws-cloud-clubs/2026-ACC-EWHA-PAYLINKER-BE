@@ -5,23 +5,8 @@ import com.paylinker.api.campaign.dto.request.CampaignScheduleRequest;
 import com.paylinker.api.campaign.dto.request.CampaignUpdateRequest;
 import com.paylinker.api.campaign.dto.request.ManualResendRequest;
 import com.paylinker.api.campaign.dto.request.ReminderRequest;
-import com.paylinker.api.campaign.dto.response.CampaignCancelResponse;
-import com.paylinker.api.campaign.dto.response.CampaignCreateResponse;
-import com.paylinker.api.campaign.dto.response.CampaignDetailResponse;
-import com.paylinker.api.campaign.dto.response.CampaignFinalReviewResponse;
-import com.paylinker.api.campaign.dto.response.CampaignListResponse;
-import com.paylinker.api.campaign.dto.response.CampaignScheduleResponse;
-import com.paylinker.api.campaign.dto.response.ManualResendResponse;
-import com.paylinker.api.campaign.dto.response.ReminderResponse;
-import com.paylinker.api.campaign.dto.response.SendFailureResponse;
-import com.paylinker.api.campaign.dto.response.ViewHistoryResponse;
-import com.paylinker.api.campaign.service.CampaignCancelService;
-import com.paylinker.api.campaign.service.CampaignCreateService;
-import com.paylinker.api.campaign.service.CampaignDetailService;
-import com.paylinker.api.campaign.service.CampaignFinalReviewService;
-import com.paylinker.api.campaign.service.CampaignScheduleService;
-import com.paylinker.api.campaign.service.CampaignService;
-import com.paylinker.api.campaign.service.CampaignUpdateService;
+import com.paylinker.api.campaign.dto.response.*;
+import com.paylinker.api.campaign.service.*;
 import com.paylinker.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -52,6 +37,7 @@ public class CampaignController {
     private final CampaignDetailService campaignDetailService;
     private final CampaignFinalReviewService campaignFinalReviewService;
     private final CampaignScheduleService campaignScheduleService;
+    private final CampaignSendService campaignSendService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<CampaignListResponse>> getCampaigns(
@@ -205,5 +191,23 @@ public class CampaignController {
         SendFailureResponse data = campaignService.getSendFailures(
                 campaignId, failureReason, page, pageSize, jwt.getSubject());
         return ResponseEntity.ok(ApiResponse.ok("실패 대상자 목록 조회 성공", data));
+    }
+
+    @PostMapping("/{campaignId}/send")
+    @Operation(
+            summary = "이메일 발송 요청 (SND-004)",
+            description = "최종 확인이 완료된 캠페인의 이메일 발송을 즉시 시작하거나 예약 상태로 전환합니다."
+    )
+    public ResponseEntity<ApiResponse<CampaignSendRequestResponse>> sendCampaign(
+            @Parameter(description = "캠페인 ID", required = true) @PathVariable String campaignId,
+            Authentication authentication) {
+
+        String adminId = authentication.getName();
+        CampaignSendRequestResponse data = campaignSendService.sendCampaign(adminId, campaignId);
+
+        String message = data.getQueuedJobCount() > 0 ? "발송 요청이 접수되었습니다." : "예약 발송이 등록되었습니다.";
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.accepted(message, data));
     }
 }
