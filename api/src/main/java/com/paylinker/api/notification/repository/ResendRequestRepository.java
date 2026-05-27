@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.Put;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
@@ -71,6 +72,40 @@ public class ResendRequestRepository {
                                 ":requested", AttributeValue.fromS("REQUESTED")))
                         .build())
                 .build();
+    }
+
+    /**
+     * 새 재전송 요청 항목 저장 트랜잭션 아이템.
+     * PK = CAMPAIGN#<campaignId>, SK = RESEND#<requestId>
+     * campaign_recipient_id 를 포함해야 NotificationService.approve() 가 사용 가능.
+     */
+    public TransactWriteItem saveTxItem(Map<String, AttributeValue> item) {
+        return TransactWriteItem.builder()
+                .put(Put.builder()
+                        .tableName(tableName())
+                        .item(item)
+                        .build())
+                .build();
+    }
+
+    /**
+     * 특정 수신자의 REQUESTED 상태 재전송 요청 존재 여부 확인.
+     * GSI2PK = RCP#<recipientId> 로 조회 후 campaign_id + req_status 필터.
+     */
+    public boolean existsPendingByRecipientId(String recipientId, String campaignId) {
+        QueryRequest req = QueryRequest.builder()
+                .tableName(tableName())
+                .indexName("GSI2")
+                .keyConditionExpression("GSI2PK = :gsi2pk")
+                .filterExpression("campaign_id = :cid AND req_status = :requested")
+                .expressionAttributeValues(Map.of(
+                        ":gsi2pk", AttributeValue.fromS("RCP#" + recipientId),
+                        ":cid",    AttributeValue.fromS(campaignId),
+                        ":requested", AttributeValue.fromS("REQUESTED")))
+                .limit(1)
+                .build();
+        QueryResponse resp = dynamoDbClient.query(req);
+        return !resp.items().isEmpty();
     }
 
     public TransactWriteItem updateToRejectedTxItem(String requestId, String processedBy, String processedAt) {

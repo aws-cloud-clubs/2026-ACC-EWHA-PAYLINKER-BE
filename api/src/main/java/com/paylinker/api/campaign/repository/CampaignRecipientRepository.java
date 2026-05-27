@@ -187,6 +187,44 @@ public class CampaignRecipientRepository {
                 .build();
     }
 
+    /**
+     * campaignId + campaignRecipientId 로 단건 조회.
+     * PK = CAMPAIGN#<campaignId> 로 query 후 campaign_recipient_id 필터.
+     */
+    public Optional<Map<String, AttributeValue>> findByCrId(String campaignId, String campaignRecipientId) {
+        QueryRequest req = QueryRequest.builder()
+                .tableName(tableName())
+                .keyConditionExpression("#pk = :pk")
+                .filterExpression("campaign_recipient_id = :crId")
+                .expressionAttributeNames(Map.of("#pk", "PK"))
+                .expressionAttributeValues(Map.of(
+                        ":pk",   AttributeValue.fromS(PaylinkerCampaignRecipient.pk(campaignId)),
+                        ":crId", AttributeValue.fromS(campaignRecipientId)))
+                .build();
+        QueryResponse resp = dynamoDbClient.query(req);
+        return resp.items().stream().findFirst();
+    }
+
+    /**
+     * resend_request_count 1 증가 트랜잭션 아이템.
+     * PK = CAMPAIGN#<campaignId>, SK = RCP#<recipientId>
+     */
+    public TransactWriteItem incrementResendRequestCountTxItem(String campaignId, String recipientId) {
+        return TransactWriteItem.builder()
+                .update(Update.builder()
+                        .tableName(tableName())
+                        .key(Map.of(
+                                "PK", AttributeValue.fromS(PaylinkerCampaignRecipient.pk(campaignId)),
+                                "SK", AttributeValue.fromS(PaylinkerCampaignRecipient.sk(recipientId))))
+                        .updateExpression(
+                                "SET resend_request_count = if_not_exists(resend_request_count, :zero) + :one")
+                        .expressionAttributeValues(Map.of(
+                                ":zero", AttributeValue.fromN("0"),
+                                ":one",  AttributeValue.fromN("1")))
+                        .build())
+                .build();
+    }
+
     private List<Map<String, AttributeValue>> queryByGsiPk(
             String indexName, String pkAttrName, String pkValue) {
         List<Map<String, AttributeValue>> results = new ArrayList<>();

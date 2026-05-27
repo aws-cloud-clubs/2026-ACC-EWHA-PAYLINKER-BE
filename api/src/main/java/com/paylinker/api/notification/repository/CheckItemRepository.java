@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.Put;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
@@ -61,6 +62,16 @@ public class CheckItemRepository {
                 .build();
         ScanResponse resp = dynamoDbClient.scan(req);
         return resp.items().stream().findFirst();
+    }
+
+    /** 새 CheckItem 저장 트랜잭션 아이템 */
+    public TransactWriteItem saveTxItem(Map<String, AttributeValue> item) {
+        return TransactWriteItem.builder()
+                .put(Put.builder()
+                        .tableName(tableName())
+                        .item(item)
+                        .build())
+                .build();
     }
 
     public void updateCheckStatus(String checkItemId, String checkStatus) {
