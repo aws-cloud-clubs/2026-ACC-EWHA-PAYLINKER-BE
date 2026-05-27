@@ -1,4 +1,4 @@
-name: Deploy Email Worker to AWS Lambda
+name: Deploy Email Workers to AWS Lambda
 
 on:
   push:
@@ -11,9 +11,12 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  SES_EVENT_LAMBDA_NAME: dev-paylinker-ses-event-worker
+
 jobs:
   build-and-deploy:
-    name: Build and Deploy Lambda
+    name: Build and Deploy Lambdas
     runs-on: ubuntu-latest
 
     steps:
@@ -38,7 +41,15 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Update Lambda configuration (handler)
+      - name: Resolve artifact path
+        id: artifact
+        run: |
+          ARTIFACT=$(ls worker/build/libs/worker-*.jar | grep -v sources | grep -v javadoc | head -n 1)
+          echo "path=$ARTIFACT" >> $GITHUB_OUTPUT
+          echo "Using $ARTIFACT"
+
+      # ── email-worker (SQS → SES 발송) ───────────────────────────
+      - name: Update email-worker handler
         env:
           LAMBDA_FUNCTION_NAME: ${{ vars.LAMBDA_FUNCTION_NAME }}
         run: |
@@ -48,12 +59,29 @@ jobs:
           aws lambda wait function-updated \
             --function-name $LAMBDA_FUNCTION_NAME
 
-      - name: Update Lambda function code
+      - name: Update email-worker code
         env:
           LAMBDA_FUNCTION_NAME: ${{ vars.LAMBDA_FUNCTION_NAME }}
         run: |
-          ARTIFACT=$(ls worker/build/libs/worker-*.jar | grep -v sources | grep -v javadoc | head -n 1)
-          echo "Uploading $ARTIFACT"
           aws lambda update-function-code \
             --function-name $LAMBDA_FUNCTION_NAME \
-            --zip-file fileb://$ARTIFACT
+            --zip-file fileb://${{ steps.artifact.outputs.path }}
+          aws lambda wait function-updated \
+            --function-name $LAMBDA_FUNCTION_NAME
+
+      # ── ses-event-worker (SES → SNS → SQS → DynamoDB 갱신) ──────
+      - name: Update ses-event-worker handler
+        run: |
+          aws lambda update-function-configuration \
+            --function-name $SES_EVENT_LAMBDA_NAME \
+            --handler com.paylinker.worker.sesevent.SesEventHandler::handleRequest
+          aws lambda wait function-updated \
+            --function-name $SES_EVENT_LAMBDA_NAME
+
+      - name: Update ses-event-worker code
+        run: |
+          aws lambda update-function-code \
+            --function-name $SES_EVENT_LAMBDA_NAME \
+            --zip-file fileb://${{ steps.artifact.outputs.path }}
+          aws lambda wait function-updated \
+            --function-name $SES_EVENT_LAMBDA_NAME
