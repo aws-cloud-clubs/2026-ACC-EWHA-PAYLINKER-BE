@@ -19,6 +19,9 @@ dependencies {
     // JSON
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.0")
 
+    // Mustache 템플릿 (jmustache: 의존성 없는 ~70KB 라이브러리, Lambda cold-start 적합)
+    implementation("com.samskivert:jmustache:1.16")
+
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
 }
 
