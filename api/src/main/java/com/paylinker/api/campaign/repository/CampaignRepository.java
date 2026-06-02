@@ -3,6 +3,7 @@ package com.paylinker.api.campaign.repository;
 import com.paylinker.api.entity.PaylinkerAuditLog;
 import com.paylinker.api.entity.PaylinkerCampaign;
 import com.paylinker.api.entity.PaylinkerCampaignLimit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,6 +25,7 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
+import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 @Repository
@@ -77,26 +79,30 @@ public class CampaignRepository {
                 .build());
     }
 
-    /** SCHEDULED 상태 캠페인 전체 조회 (예약 발송 폴러용 스캔). */
+    /** SCHEDULED 상태 캠페인 전체 조회 (예약 발송 폴러용). */
     public List<Map<String, AttributeValue>> findScheduledCampaigns() {
-        ScanRequest req = ScanRequest.builder()
-                .tableName(tableName())
-                .filterExpression("#s = :sch")
-                .expressionAttributeNames(Map.of("#s", "status"))
-                .expressionAttributeValues(Map.of(":sch", AttributeValue.fromS("SCHEDULED")))
-                .build();
-        return dynamoDbClient.scan(req).items();
+        return findByStatus("SCHEDULED");
     }
 
-    /** 특정 상태의 캠페인 전체 조회 (스캔). */
+    /** 특정 상태의 캠페인 전체 조회 (스캔, lastEvaluatedKey 페이지네이션으로 전체 수집). */
     public List<Map<String, AttributeValue>> findByStatus(String status) {
+        List<Map<String, AttributeValue>> result = new ArrayList<>();
         ScanRequest req = ScanRequest.builder()
                 .tableName(tableName())
                 .filterExpression("#s = :v")
                 .expressionAttributeNames(Map.of("#s", "status"))
                 .expressionAttributeValues(Map.of(":v", AttributeValue.fromS(status)))
                 .build();
-        return dynamoDbClient.scan(req).items();
+        ScanResponse resp;
+        do {
+            resp = dynamoDbClient.scan(req);
+            result.addAll(resp.items());
+            if (!resp.hasLastEvaluatedKey() || resp.lastEvaluatedKey().isEmpty()) {
+                break;
+            }
+            req = req.toBuilder().exclusiveStartKey(resp.lastEvaluatedKey()).build();
+        } while (true);
+        return result;
     }
 
     /** 캠페인 완료 처리: 상태 + 완료 시각 + 성공/실패 카운트 갱신. */
