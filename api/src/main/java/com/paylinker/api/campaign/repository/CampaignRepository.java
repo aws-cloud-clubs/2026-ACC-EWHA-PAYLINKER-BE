@@ -88,6 +88,36 @@ public class CampaignRepository {
         return dynamoDbClient.scan(req).items();
     }
 
+    /** 특정 상태의 캠페인 전체 조회 (스캔). */
+    public List<Map<String, AttributeValue>> findByStatus(String status) {
+        ScanRequest req = ScanRequest.builder()
+                .tableName(tableName())
+                .filterExpression("#s = :v")
+                .expressionAttributeNames(Map.of("#s", "status"))
+                .expressionAttributeValues(Map.of(":v", AttributeValue.fromS(status)))
+                .build();
+        return dynamoDbClient.scan(req).items();
+    }
+
+    /** 캠페인 완료 처리: 상태 + 완료 시각 + 성공/실패 카운트 갱신. */
+    public void completeCampaign(String campaignId, String status, String completedAt,
+                                 int successCount, int failedCount) {
+        dynamoDbClient.updateItem(UpdateItemRequest.builder()
+                .tableName(tableName())
+                .key(Map.of(
+                        "PK", AttributeValue.fromS(PaylinkerCampaign.pk(campaignId)),
+                        "SK", AttributeValue.fromS(PaylinkerCampaign.sk())))
+                .updateExpression("SET #s = :st, send_completed_at = :ca, "
+                        + "send_success_count = :sc, send_failed_count = :fc")
+                .expressionAttributeNames(Map.of("#s", "status"))
+                .expressionAttributeValues(Map.of(
+                        ":st", AttributeValue.fromS(status),
+                        ":ca", AttributeValue.fromS(completedAt),
+                        ":sc", AttributeValue.fromN(String.valueOf(successCount)),
+                        ":fc", AttributeValue.fromN(String.valueOf(failedCount))))
+                .build());
+    }
+
     public Optional<PaylinkerCampaign> findByCampaignId(String campaignId) {
         Key key = Key.builder()
                 .partitionValue(PaylinkerCampaign.pk(campaignId))
