@@ -235,7 +235,7 @@ public class CampaignService {
             String sendJobId = newId("sj");
             persistReminderJob(sendJobId, recipientId, campaignId, secureLinkId, requestedAt);
 
-            if (tryEnqueueReminderJob(sendJobId, secureLinkId)) {
+            if (tryEnqueueReminderJob(sendJobId, secureLinkId, campaignId, recipientId)) {
                 queuedCount++;
             }
         }
@@ -286,7 +286,7 @@ public class CampaignService {
             String plainToken = UUID.randomUUID().toString().replace("-", "");
             String sendJobId = persistResendJob(recipientId, campaignId, plainToken, requestedAt);
 
-            if (tryEnqueueResendJob(sendJobId, plainToken)) {
+            if (tryEnqueueResendJob(sendJobId, plainToken, campaignId, recipientId)) {
                 queuedCount++;
             }
         }
@@ -412,10 +412,14 @@ public class CampaignService {
     // SQS 큐잉
     // ────────────────────────────────────────────────
 
-    private boolean tryEnqueueReminderJob(String sendJobId, String secureLinkId) {
+    private boolean tryEnqueueReminderJob(String sendJobId, String secureLinkId,
+                                          String campaignId, String campaignRecipientId) {
         try {
-            String body = objectMapper.writeValueAsString(
-                    Map.of("sendJobId", sendJobId, "secureLinkId", secureLinkId));
+            String body = objectMapper.writeValueAsString(Map.of(
+                    "sendJobId", sendJobId,
+                    "secureLinkId", secureLinkId,
+                    "campaignId", campaignId,
+                    "campaignRecipientId", campaignRecipientId));
             enqueue(body);
             return true;
         } catch (Exception e) {
@@ -425,10 +429,14 @@ public class CampaignService {
         }
     }
 
-    private boolean tryEnqueueResendJob(String sendJobId, String plainToken) {
+    private boolean tryEnqueueResendJob(String sendJobId, String plainToken,
+                                        String campaignId, String campaignRecipientId) {
         try {
-            String body = objectMapper.writeValueAsString(
-                    Map.of("sendJobId", sendJobId, "plainToken", plainToken));
+            String body = objectMapper.writeValueAsString(Map.of(
+                    "sendJobId", sendJobId,
+                    "plainToken", plainToken,
+                    "campaignId", campaignId,
+                    "campaignRecipientId", campaignRecipientId));
             enqueue(body);
             return true;
         } catch (Exception e) {

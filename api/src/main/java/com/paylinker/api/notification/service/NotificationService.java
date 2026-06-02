@@ -185,7 +185,7 @@ public class NotificationService {
 
         // 4. SQS 큐잉은 모든 DB 작업 완료 후 마지막에 수행
         //    plainToken을 포함해 워커가 보안 링크 URL을 생성할 수 있도록 전달
-        enqueueSendJob(sendJobId, plainToken);
+        enqueueSendJob(sendJobId, plainToken, campaignId, campaignRecipientId);
 
         return ResendRequestActionResponse.builder()
                 .requestId(requestId)
@@ -220,11 +220,14 @@ public class NotificationService {
                 .build();
     }
 
-    private void enqueueSendJob(String sendJobId, String plainToken) {
+    private void enqueueSendJob(String sendJobId, String plainToken,
+                                String campaignId, String campaignRecipientId) {
         try {
             String body = objectMapper.writeValueAsString(Map.of(
                     "sendJobId", sendJobId,
-                    "plainToken", plainToken
+                    "plainToken", plainToken,
+                    "campaignId", campaignId,
+                    "campaignRecipientId", campaignRecipientId
             ));
             sqsClient.sendMessage(SendMessageRequest.builder()
                     .queueUrl(sqsQueueUrl)
