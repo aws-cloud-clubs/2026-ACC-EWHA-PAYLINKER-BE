@@ -30,12 +30,14 @@ public class SendJobRepository {
         dynamoDbClient.putItem(PutItemRequest.builder()
                 .tableName(tableName())
                 .item(Map.of(
+                        "PK", AttributeValue.fromS("CAMPAIGN#" + campaignId),
+                        "SK", AttributeValue.fromS("JOB#" + sendJobId),
                         "send_job_id", AttributeValue.fromS(sendJobId),
                         "campaign_recipient_id", AttributeValue.fromS(campaignRecipientId),
                         "campaign_id", AttributeValue.fromS(campaignId),
                         "job_type", AttributeValue.fromS(jobType),
                         "secure_link_id", AttributeValue.fromS(secureLinkId),
-                        "status", AttributeValue.fromS("QUEUED"),
+                        "job_status", AttributeValue.fromS("QUEUED"),
                         "created_at", AttributeValue.fromS(createdAt)))
                 .build());
     }
@@ -44,12 +46,13 @@ public class SendJobRepository {
      * SQS 큐잉 실패 시 sendJob을 FAILED 상태로 마킹하여 orphan 방지.
      * 별도 트랜잭션 없이 단독 업데이트로 처리.
      */
-    public void updateToFailed(String sendJobId) {
+    public void updateToFailed(String campaignId, String sendJobId) {
         dynamoDbClient.updateItem(UpdateItemRequest.builder()
                 .tableName(tableName())
-                .key(Map.of("send_job_id", AttributeValue.fromS(sendJobId)))
-                .updateExpression("SET #s = :failed")
-                .expressionAttributeNames(Map.of("#s", "status"))
+                .key(Map.of(
+                        "PK", AttributeValue.fromS("CAMPAIGN#" + campaignId),
+                        "SK", AttributeValue.fromS("JOB#" + sendJobId)))
+                .updateExpression("SET job_status = :failed")
                 .expressionAttributeValues(Map.of(":failed", AttributeValue.fromS("FAILED")))
                 .build());
     }
@@ -60,12 +63,14 @@ public class SendJobRepository {
                 .put(Put.builder()
                         .tableName(tableName())
                         .item(Map.of(
+                                "PK", AttributeValue.fromS("CAMPAIGN#" + campaignId),
+                                "SK", AttributeValue.fromS("JOB#" + sendJobId),
                                 "send_job_id", AttributeValue.fromS(sendJobId),
                                 "campaign_recipient_id", AttributeValue.fromS(campaignRecipientId),
                                 "campaign_id", AttributeValue.fromS(campaignId),
                                 "job_type", AttributeValue.fromS(jobType),
                                 "secure_link_id", AttributeValue.fromS(secureLinkId),
-                                "status", AttributeValue.fromS("QUEUED"),
+                                "job_status", AttributeValue.fromS("QUEUED"),
                                 "created_at", AttributeValue.fromS(createdAt)))
                         .build())
                 .build();

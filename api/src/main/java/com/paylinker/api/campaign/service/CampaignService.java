@@ -424,7 +424,7 @@ public class CampaignService {
             return true;
         } catch (Exception e) {
             log.error("SQS 큐잉 실패(REMINDER), sendJob FAILED 처리: sendJobId={}", sendJobId, e);
-            sendJobRepository.updateToFailed(sendJobId);
+            sendJobRepository.updateToFailed(campaignId, sendJobId);
             return false;
         }
     }
@@ -441,7 +441,7 @@ public class CampaignService {
             return true;
         } catch (Exception e) {
             log.error("SQS 큐잉 실패(RESEND), sendJob FAILED 처리: sendJobId={}", sendJobId, e);
-            sendJobRepository.updateToFailed(sendJobId);
+            sendJobRepository.updateToFailed(campaignId, sendJobId);
             return false;
         }
     }
