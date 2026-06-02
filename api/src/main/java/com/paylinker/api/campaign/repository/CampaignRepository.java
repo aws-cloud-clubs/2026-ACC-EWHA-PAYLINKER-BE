@@ -23,6 +23,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 @Repository
 public class CampaignRepository {
@@ -48,6 +49,21 @@ public class CampaignRepository {
 
     private String tableName() {
         return tablePrefix + "-campaign";
+    }
+
+    /** 캠페인 상태 + 발송 시작 시각 갱신 (저수준, PK/SK). */
+    public void updateStatus(String campaignId, String status, String sendStartedAt) {
+        dynamoDbClient.updateItem(UpdateItemRequest.builder()
+                .tableName(tableName())
+                .key(Map.of(
+                        "PK", AttributeValue.fromS(PaylinkerCampaign.pk(campaignId)),
+                        "SK", AttributeValue.fromS(PaylinkerCampaign.sk())))
+                .updateExpression("SET #s = :st, send_started_at = :ts")
+                .expressionAttributeNames(Map.of("#s", "status"))
+                .expressionAttributeValues(Map.of(
+                        ":st", AttributeValue.fromS(status),
+                        ":ts", AttributeValue.fromS(sendStartedAt)))
+                .build());
     }
 
     public Optional<Map<String, AttributeValue>> findById(String campaignId) {

@@ -11,6 +11,7 @@ import com.paylinker.api.campaign.dto.response.CampaignDetailResponse;
 import com.paylinker.api.campaign.dto.response.CampaignFinalReviewResponse;
 import com.paylinker.api.campaign.dto.response.CampaignListResponse;
 import com.paylinker.api.campaign.dto.response.CampaignScheduleResponse;
+import com.paylinker.api.campaign.dto.response.CampaignSendResponse;
 import com.paylinker.api.campaign.dto.response.ManualResendResponse;
 import com.paylinker.api.campaign.dto.response.ReminderResponse;
 import com.paylinker.api.campaign.dto.response.SendFailureResponse;
@@ -18,6 +19,7 @@ import com.paylinker.api.campaign.dto.response.ViewHistoryResponse;
 import com.paylinker.api.campaign.service.CampaignCancelService;
 import com.paylinker.api.campaign.service.CampaignCreateService;
 import com.paylinker.api.campaign.service.CampaignDetailService;
+import com.paylinker.api.campaign.service.CampaignDispatchService;
 import com.paylinker.api.campaign.service.CampaignFinalReviewService;
 import com.paylinker.api.campaign.service.CampaignScheduleService;
 import com.paylinker.api.campaign.service.CampaignService;
@@ -52,6 +54,7 @@ public class CampaignController {
     private final CampaignDetailService campaignDetailService;
     private final CampaignFinalReviewService campaignFinalReviewService;
     private final CampaignScheduleService campaignScheduleService;
+    private final CampaignDispatchService campaignDispatchService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<CampaignListResponse>> getCampaigns(
@@ -130,6 +133,21 @@ public class CampaignController {
         CampaignScheduleResponse responseData = campaignScheduleService.scheduleCampaign(adminId, campaignId, request);
         String msg = request.scheduledSendAt() != null ? "예약 발송 설정 완료" : "예약 발송 해제 완료";
         return ResponseEntity.ok(ApiResponse.ok(msg, responseData));
+    }
+
+    @PostMapping("/{campaignId}/send")
+    @Operation(
+            summary = "캠페인 즉시 발송 (초기 대량발송)",
+            description = "READY/SCHEDULED 상태 캠페인의 전체 수신자에게 INITIAL 발송잡을 생성하고 SQS 에 적재한다. " +
+                    "캠페인 상태는 SENDING 으로 전이된다.")
+    public ResponseEntity<ApiResponse<CampaignSendResponse>> sendCampaign(
+            @Parameter(description = "캠페인 ID", required = true)
+            @PathVariable String campaignId,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        CampaignSendResponse data = campaignDispatchService.dispatch(campaignId, jwt.getSubject());
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.accepted("발송 요청이 접수되었습니다.", data));
     }
 
     @PostMapping("/{campaignId}/reminders")
