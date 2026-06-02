@@ -130,6 +130,8 @@ public class CampaignFanOutService {
             // Secure Link PutRequest 생성
             secureLinkWrites.add(WriteRequest.builder()
                     .putRequest(PutRequest.builder().item(Map.of(
+                            "PK", AttributeValue.fromS("TOKEN#" + hashedToken),
+                            "SK", AttributeValue.fromS("METADATA"),
                             "secure_link_id", AttributeValue.fromS(secureLinkId),
                             "campaign_recipient_id", AttributeValue.fromS(recipientId),
                             "campaign_id", AttributeValue.fromS(campaignId),
@@ -141,6 +143,8 @@ public class CampaignFanOutService {
             // Send Job PutRequest 생성
             sendJobWrites.add(WriteRequest.builder()
                     .putRequest(PutRequest.builder().item(Map.of(
+                            "PK", AttributeValue.fromS("CAMPAIGN#" + campaignId),
+                            "SK", AttributeValue.fromS("JOB#" + sendJobId),
                             "send_job_id", AttributeValue.fromS(sendJobId),
                             "campaign_recipient_id", AttributeValue.fromS(recipientId),
                             "campaign_id", AttributeValue.fromS(campaignId),
@@ -153,6 +157,8 @@ public class CampaignFanOutService {
             // SQS 메시지 Entry 생성
             String messageBody = objectMapper.writeValueAsString(Map.of(
                     "sendJobId", sendJobId,
+                    "campaignId", campaignId,
+                    "campaignRecipientId", recipientId,
                     "secureLinkRawToken", plainToken
             ));
             sqsEntries.add(SendMessageBatchRequestEntry.builder()
