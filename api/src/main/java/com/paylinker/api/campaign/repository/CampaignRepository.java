@@ -23,6 +23,8 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 @Repository
 public class CampaignRepository {
@@ -58,6 +60,32 @@ public class CampaignRepository {
                         "SK", AttributeValue.fromS(PaylinkerCampaign.sk())))
                 .build());
         return resp.hasItem() ? Optional.of(resp.item()) : Optional.empty();
+    }
+
+    /** 캠페인 상태 + 발송 시작 시각 갱신 (저수준, PK/SK). */
+    public void updateStatus(String campaignId, String status, String sendStartedAt) {
+        dynamoDbClient.updateItem(UpdateItemRequest.builder()
+                .tableName(tableName())
+                .key(Map.of(
+                        "PK", AttributeValue.fromS(PaylinkerCampaign.pk(campaignId)),
+                        "SK", AttributeValue.fromS(PaylinkerCampaign.sk())))
+                .updateExpression("SET #s = :st, send_started_at = :ts")
+                .expressionAttributeNames(Map.of("#s", "status"))
+                .expressionAttributeValues(Map.of(
+                        ":st", AttributeValue.fromS(status),
+                        ":ts", AttributeValue.fromS(sendStartedAt)))
+                .build());
+    }
+
+    /** SCHEDULED 상태 캠페인 전체 조회 (예약 발송 폴러용 스캔). */
+    public List<Map<String, AttributeValue>> findScheduledCampaigns() {
+        ScanRequest req = ScanRequest.builder()
+                .tableName(tableName())
+                .filterExpression("#s = :sch")
+                .expressionAttributeNames(Map.of("#s", "status"))
+                .expressionAttributeValues(Map.of(":sch", AttributeValue.fromS("SCHEDULED")))
+                .build();
+        return dynamoDbClient.scan(req).items();
     }
 
     public Optional<PaylinkerCampaign> findByCampaignId(String campaignId) {
