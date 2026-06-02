@@ -21,3 +21,7 @@ aws:
   s3:
     document-bucket: dev-paylinker-documents
     upload-bucket: dev-paylinker-uploads
+
+paylinker:
+  unsubscribe:
+    hmac-secret: dev-unsubscribe-secret-please-change

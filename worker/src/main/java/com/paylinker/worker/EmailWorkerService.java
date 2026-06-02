@@ -8,14 +8,17 @@ import com.paylinker.worker.email.EmailSender;
 import com.paylinker.worker.email.EmailTemplate;
 import com.paylinker.worker.repository.CampaignRecipientRepo;
 import com.paylinker.worker.repository.CampaignRepo;
+import com.paylinker.worker.repository.EmailSuppressionRepo;
 import com.paylinker.worker.repository.SecureLinkRepo;
 import com.paylinker.worker.repository.SendAttemptRepo;
 import com.paylinker.worker.repository.SendJobRepo;
 import com.paylinker.worker.util.HashUtil;
 import com.paylinker.worker.util.IdUtil;
+import com.paylinker.worker.util.UnsubscribeToken;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Map;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.ses.model.SesException;
@@ -35,6 +38,9 @@ public class EmailWorkerService {
     private final SendAttemptRepo sendAttemptRepo;
     private final EmailSender emailSender;
     private final String recipientLinkBaseUrl;
+    private final EmailSuppressionRepo emailSuppressionRepo;
+    private final String unsubscribeBaseUrl;
+    private final String unsubscribeSecret;
 
     public EmailWorkerService(CampaignRepo campaignRepo,
                               CampaignRecipientRepo recipientRepo,
@@ -42,7 +48,10 @@ public class EmailWorkerService {
                               SendJobRepo sendJobRepo,
                               SendAttemptRepo sendAttemptRepo,
                               EmailSender emailSender,
-                              String recipientLinkBaseUrl) {
+                              String recipientLinkBaseUrl,
+                              EmailSuppressionRepo emailSuppressionRepo,
+                              String unsubscribeBaseUrl,
+                              String unsubscribeSecret) {
         this.campaignRepo = campaignRepo;
         this.recipientRepo = recipientRepo;
         this.secureLinkRepo = secureLinkRepo;
@@ -50,6 +59,9 @@ public class EmailWorkerService {
         this.sendAttemptRepo = sendAttemptRepo;
         this.emailSender = emailSender;
         this.recipientLinkBaseUrl = trimTrailingSlash(recipientLinkBaseUrl);
+        this.emailSuppressionRepo = emailSuppressionRepo;
+        this.unsubscribeBaseUrl = trimTrailingSlash(unsubscribeBaseUrl);
+        this.unsubscribeSecret = unsubscribeSecret;
     }
 
     /**
@@ -63,8 +75,8 @@ public class EmailWorkerService {
                     "send_job not found: " + msg.sendJobId() + " (campaign " + msg.campaignId() + ")");
         }
         String existingStatus = str(sendJob, "job_status");
-        if ("SUCCESS".equals(existingStatus)) {
-            // 이미 처리된 메시지. 멱등 종료.
+        if ("SUCCESS".equals(existingStatus) || "SKIPPED".equals(existingStatus)) {
+            // 이미 처리(발송 또는 스킵)된 메시지. 멱등 종료.
             return;
         }
 
@@ -85,6 +97,14 @@ public class EmailWorkerService {
         if (toEmail == null || toEmail.isBlank()) {
             failJob(msg, "INVALID_EMAIL");
             recipientRepo.markFailed(msg.campaignId(), msg.campaignRecipientId(), "INVALID_EMAIL");
+            return;
+        }
+
+        // 2-1. 수신거부 가드: email 해시가 suppression 에 있으면 발송하지 않고 SKIPPED 처리.
+        String emailHash = HashUtil.sha256Hex(toEmail.toLowerCase(Locale.ROOT));
+        if (emailSuppressionRepo.isSuppressed(emailHash)) {
+            recipientRepo.markSkipped(msg.campaignId(), msg.campaignRecipientId(), "UNSUBSCRIBED");
+            sendJobRepo.markSkipped(msg.campaignId(), msg.sendJobId(), "UNSUBSCRIBED");
             return;
         }
 
@@ -112,7 +132,8 @@ public class EmailWorkerService {
                 str(campaign, "email_subject"),
                 str(campaign, "email_description"),
                 buildLinkUrl(plainToken),
-                expiresAtKst.format(HUMAN_KST) + " KST");
+                expiresAtKst.format(HUMAN_KST) + " KST",
+                buildUnsubscribeUrl(emailHash));
         String subject = orDefault(str(campaign, "email_subject"),
                 orDefault(str(campaign, "campaign_name"), "PayLinker 명세서 안내"));
 
@@ -166,6 +187,13 @@ public class EmailWorkerService {
 
     private String buildLinkUrl(String plainToken) {
         return recipientLinkBaseUrl + "/" + plainToken;
+    }
+
+    private String buildUnsubscribeUrl(String emailHash) {
+        if (emailHash == null || unsubscribeSecret == null || unsubscribeSecret.isBlank()) {
+            return null;
+        }
+        return unsubscribeBaseUrl + "/" + UnsubscribeToken.generate(emailHash, unsubscribeSecret);
     }
 
     private static String orDefault(String v, String fallback) {

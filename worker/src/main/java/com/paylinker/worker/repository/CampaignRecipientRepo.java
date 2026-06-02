@@ -78,4 +78,21 @@ public class CampaignRecipientRepo {
                         ":one", Attr.n(1)))
                 .build());
     }
+
+    /** send_status = "SKIPPED" + failure_reason 갱신 (수신거부 등 비-실패 스킵). */
+    public void markSkipped(String campaignId, String recipientId, String reason) {
+        String newStatus = "SKIPPED";
+        String gsi1Pk = "CAMPAIGN#" + campaignId + "#ST#" + newStatus;
+        ddb.updateItem(UpdateItemRequest.builder()
+                .tableName(tableName)
+                .key(Map.of(
+                        "PK", Attr.s("CAMPAIGN#" + campaignId),
+                        "SK", Attr.s("RCP#" + recipientId)))
+                .updateExpression("SET send_status = :s, GSI1PK = :g, failure_reason = :r")
+                .expressionAttributeValues(Map.of(
+                        ":s", Attr.s(newStatus),
+                        ":g", Attr.s(gsi1Pk),
+                        ":r", Attr.s(reason)))
+                .build());
+    }
 }
