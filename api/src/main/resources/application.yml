@@ -75,3 +75,5 @@ paylinker:
     max-recipients: ${MAX_RECIPIENTS:5000}
   upload-batch:
     file-storage-key: ${UPLOAD_BATCH_FILE_STORAGE_KEY:recipients}
+  unsubscribe:
+    hmac-secret: ${UNSUBSCRIBE_HMAC_SECRET:}

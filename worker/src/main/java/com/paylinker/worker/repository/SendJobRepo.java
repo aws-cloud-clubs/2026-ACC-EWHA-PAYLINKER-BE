@@ -60,4 +60,19 @@ public class SendJobRepo {
                 .expressionAttributeValues(values)
                 .build());
     }
+
+    /** job_status = "SKIPPED" + failure_reason 갱신 (수신거부 등 비-실패 스킵). */
+    public void markSkipped(String campaignId, String sendJobId, String reason) {
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":s", Attr.s("SKIPPED"));
+        values.put(":r", Attr.s(reason));
+        ddb.updateItem(UpdateItemRequest.builder()
+                .tableName(tableName)
+                .key(Map.of(
+                        "PK", Attr.s("CAMPAIGN#" + campaignId),
+                        "SK", Attr.s("JOB#" + sendJobId)))
+                .updateExpression("SET job_status = :s, failure_reason = :r")
+                .expressionAttributeValues(values)
+                .build());
+    }
 }

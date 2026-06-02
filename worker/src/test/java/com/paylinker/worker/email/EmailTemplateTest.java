@@ -15,7 +15,8 @@ class EmailTemplateTest {
                 "5월 명세서 안내",
                 "급여 명세서를 확인해 주세요.",
                 "https://pay.example/abc",
-                "2026-06-10 18:00 KST"
+                "2026-06-10 18:00 KST",
+                "https://paylinker.kr/unsubscribe/rcp_1.sig"
         );
 
         assertTrue(html.contains("민수정 님, 안녕하세요."));
@@ -24,16 +25,19 @@ class EmailTemplateTest {
         assertTrue(html.contains("급여 명세서를 확인해 주세요."));
         assertTrue(html.contains("https://pay.example/abc"));
         assertTrue(html.contains("확인 가능 기한: 2026-06-10 18:00 KST"));
+        assertTrue(html.contains("https://paylinker.kr/unsubscribe/rcp_1.sig"));
+        assertTrue(html.contains("수신 거부"));
     }
 
     @Test
     void appliesDefaultsForBlankValues() {
-        String html = EmailTemplate.render(null, null, null, null, "https://pay.example/x", "");
+        String html = EmailTemplate.render(null, null, null, null, "https://pay.example/x", "", null);
 
         assertTrue(html.contains("고객 님, 안녕하세요."));
         assertTrue(html.contains("명세서 안내"));
         assertTrue(html.contains("아래 버튼을 눌러 본인 명세서를 확인해 주세요."));
         assertFalse(html.contains("확인 가능 기한:"));
+        assertFalse(html.contains("수신 거부"));
     }
 
     @Test
@@ -44,7 +48,8 @@ class EmailTemplateTest {
                 "subj \"q\"",
                 "desc < > & \"",
                 "https://pay.example/?a=1&b=2",
-                "2026-06-10"
+                "2026-06-10",
+                null
         );
 
         assertFalse(html.contains("<script>alert"));
@@ -59,7 +64,7 @@ class EmailTemplateTest {
 
     @Test
     void omitsExpiryBlockWhenBlank() {
-        String html = EmailTemplate.render("이름", "캠페인", "제목", "설명", "https://x", null);
+        String html = EmailTemplate.render("이름", "캠페인", "제목", "설명", "https://x", null, null);
 
         assertFalse(html.contains("확인 가능 기한"));
     }

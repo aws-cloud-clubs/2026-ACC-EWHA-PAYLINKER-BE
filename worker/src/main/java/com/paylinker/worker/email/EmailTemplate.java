@@ -30,10 +30,12 @@ public final class EmailTemplate {
                                 String emailSubject,
                                 String emailDescription,
                                 String linkUrl,
-                                String expiresAtKst) {
+                                String expiresAtKst,
+                                String unsubscribeUrl) {
         String campaign = blankToDefault(campaignName, "명세서 안내");
         String subject = blankToDefault(emailSubject, campaign);
         String expires = blankToDefault(expiresAtKst, "");
+        String unsubscribe = blankToDefault(unsubscribeUrl, "");
 
         Map<String, Object> ctx = new HashMap<>();
         ctx.put("recipientName", blankToDefault(recipientName, "고객"));
@@ -43,6 +45,8 @@ public final class EmailTemplate {
         ctx.put("linkUrl", linkUrl == null ? "" : linkUrl);
         ctx.put("expiresAtKst", expires);
         ctx.put("hasExpires", !expires.isEmpty());
+        ctx.put("unsubscribeUrl", unsubscribe);
+        ctx.put("hasUnsubscribe", !unsubscribe.isEmpty());
 
         return TEMPLATE.execute(ctx);
     }

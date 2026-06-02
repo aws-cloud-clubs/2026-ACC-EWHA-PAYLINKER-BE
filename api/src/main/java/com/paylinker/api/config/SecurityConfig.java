@@ -78,4 +78,14 @@ public class SecurityConfig {
                 .csrf(c -> c.disable())
                 .build();
     }
+
+    @Bean
+    @Order(4)
+    public SecurityFilterChain unsubscribeChain(HttpSecurity http) throws Exception {
+        return http
+                .securityMatcher("/unsubscribe/**")
+                .authorizeHttpRequests(a -> a.anyRequest().permitAll())
+                .csrf(c -> c.disable())
+                .build();
+    }
 }

@@ -8,5 +8,6 @@ public enum SendFailureReason {
     TEMPORARY_FAILURE,
     SYSTEM_ERROR,
     RATE_LIMITED,
-    UNKNOWN
+    UNKNOWN,
+    UNSUBSCRIBED
 }

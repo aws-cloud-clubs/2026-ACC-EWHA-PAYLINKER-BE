@@ -11,6 +11,7 @@ import com.paylinker.worker.dto.EmailJobMessage;
 import com.paylinker.worker.email.EmailSender;
 import com.paylinker.worker.repository.CampaignRecipientRepo;
 import com.paylinker.worker.repository.CampaignRepo;
+import com.paylinker.worker.repository.EmailSuppressionRepo;
 import com.paylinker.worker.repository.SecureLinkRepo;
 import com.paylinker.worker.repository.SendAttemptRepo;
 import com.paylinker.worker.repository.SendJobRepo;
@@ -44,6 +45,8 @@ public class EmailWorkerHandler implements RequestHandler<SQSEvent, SQSBatchResp
         String fromEmail = env("SES_FROM_EMAIL", "");
         String configurationSet = env("SES_CONFIGURATION_SET", "");
         String linkBase = env("RECIPIENT_LINK_BASE_URL", "https://paylinker.kr/link");
+        String unsubscribeBase = env("UNSUBSCRIBE_BASE_URL", "https://paylinker.kr/unsubscribe");
+        String unsubscribeSecret = env("UNSUBSCRIBE_HMAC_SECRET", "");
 
         DynamoDbClient ddb = DynamoDbClient.builder()
                 .region(Region.of(region))
@@ -61,7 +64,10 @@ public class EmailWorkerHandler implements RequestHandler<SQSEvent, SQSBatchResp
                 new SendJobRepo(ddb, tablePrefix),
                 new SendAttemptRepo(ddb, tablePrefix),
                 new EmailSender(ses, fromEmail, configurationSet),
-                linkBase);
+                linkBase,
+                new EmailSuppressionRepo(ddb, tablePrefix),
+                unsubscribeBase,
+                unsubscribeSecret);
     }
 
     @Override

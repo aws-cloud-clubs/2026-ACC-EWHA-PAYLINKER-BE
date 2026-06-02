@@ -7,5 +7,6 @@ public enum SendJobStatus {
     SUCCESS,
     FAILED,
     RETRYING,
-    CANCELLED
+    CANCELLED,
+    SKIPPED
 }
